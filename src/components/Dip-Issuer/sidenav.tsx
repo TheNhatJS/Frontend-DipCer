@@ -7,7 +7,7 @@ export default function SideNav({ institutionName }: { institutionName: string }
     return (
         <div className="w-full md:w-86 h-full bg-[#1A1D24] text-white p-4 flex flex-col justify-between">
             <div>
-                <div className="mb-8 text-xl font-bold text-indigo-400 break-words w-full max-w-full leading-snug">
+                <div className="mb-8 text-4xl font-bold text-red-600 break-words w-full max-w-full leading-snug">
                     {institutionName}
                 </div>
 

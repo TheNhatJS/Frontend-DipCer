@@ -3,3 +3,10 @@
 /* * {
   margin: 0;
 } */
+
+/* styles/globals.css hoặc app/globals.css */
+
+.shadow-glow-hover:hover {
+  box-shadow: 0 10px 25px rgba(56, 182, 255, 0.2);
+  transition: box-shadow 0.3s ease;
+}

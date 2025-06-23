@@ -28,7 +28,7 @@ export default function StudentInfoPage() {
     <div className="min-h-screen bg-[#202328] text-white flex flex-col">
       <Header />
 
-      <main className="flex-1 flex justify-center items-center px-4">
+      <main className="flex-1 flex justify-center items-center px-4 mt-16">
         <div className="backdrop-blur-lg bg-white/5 border border-white/10 rounded-2xl shadow-lg p-8 w-full max-w-md">
           <h2 className="text-2xl font-bold text-center mb-6">Thông tin Sinh viên</h2>
           <form onSubmit={handleSubmit} className="space-y-5">

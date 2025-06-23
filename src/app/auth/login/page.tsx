@@ -25,7 +25,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#202328] relative">
       {/* Nền gradient */}
-      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-[#1b1f24] via-[#202328] to-[#111315]" />
+      <div className="absolute inset-0 -z-10" />
 
       <Header />
 

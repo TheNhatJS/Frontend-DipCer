@@ -64,9 +64,9 @@ export default function CertificateListPage() {
 
   return (
     <div className="text-white">
-      <h2 className="text-2xl font-bold mb-6">Văn bằng đã cấp</h2>
+      <h2 className="text-2xl font-bold mb-6 px-6 py-8">Văn bằng đã cấp</h2>
 
-      <div className="grid sm:grid-cols-2 gap-6">
+      <div className="grid sm:grid-cols-2 gap-6 px-6 py-8">
         {certificates.map((c) => (
           <div
             key={c.tokenId}

@@ -27,8 +27,8 @@ export default function StudentListPage() {
 
   return (
     <div className="text-white">
-      <h2 className="text-2xl font-semibold mb-6">Danh sách sinh viên</h2>
-      <div className="grid sm:grid-cols-2 gap-4">
+      <h2 className="text-2xl font-semibold mb-6 px-6 py-8">Danh sách sinh viên</h2>
+      <div className="grid sm:grid-cols-2 gap-4 px-6 py-8">
         {students.map((student) => (
           <div
             key={student.id}

@@ -20,7 +20,7 @@ export default function NavLinks() {
         <Link
           key={link.name}
           href={link.href}
-          className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-colors ${pathname === link.href
+          className={`flex items-center gap-3 px-4 py-2 my-1 rounded-lg transition-colors ${pathname === link.href
             ? 'bg-indigo-600 text-white'
             : 'text-gray-300 hover:bg-indigo-700 hover:text-white'}`}
         >

@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 
-export default {
+const config: Config = {
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -10,8 +10,13 @@ export default {
     extend: {
       backgroundImage: {
         "custom-image": "url('/static/image/bg.jpg')",
-      }
+      },
+      boxShadow: {
+        glow: "0 10px 25px rgba(56, 182, 255, 0.2)",
+      },
     },
   },
   plugins: [],
-} satisfies Config;
+};
+
+export default config;
