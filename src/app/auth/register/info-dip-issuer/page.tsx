@@ -21,7 +21,7 @@ export default function IssuerInfoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#202328] text-white flex flex-col">
+    <div className="min-h-screen text-white flex flex-col">
       <Header />
 
       <main className="flex-1 flex justify-center items-center px-4">

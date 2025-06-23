@@ -23,7 +23,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#202328] relative">
+    <div className="min-h-screen flex flex-col relative">
       {/* Nền gradient */}
       <div className="absolute inset-0 -z-10" />
 
