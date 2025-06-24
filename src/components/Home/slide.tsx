@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { FaGraduationCap } from "react-icons/fa";
 
 export default function SlideSelection({ onScrollToSearch }: { onScrollToSearch: () => void }) {

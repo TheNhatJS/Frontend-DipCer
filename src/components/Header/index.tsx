@@ -3,6 +3,7 @@
 import { FaGraduationCap, FaWallet } from 'react-icons/fa'
 import { useState } from 'react'
 import Link from 'next/link'
+import { useWallet } from '@/contexts/WalletContext' // Đảm bảo đã tạo và cung cấp WalletProvider
 
 interface HeaderProps {
   name?: string
@@ -10,12 +11,8 @@ interface HeaderProps {
 }
 
 export default function Header({ name, onLogout }: HeaderProps) {
-  const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [showMenu, setShowMenu] = useState(false)
-
-  const handleConnectWallet = () => {
-    setWalletAddress('0x1234567890abcdef1234567890abcdef12345678')
-  }
+  const { address, connectWallet, disconnectWallet } = useWallet()
 
   const toggleMenu = () => {
     setShowMenu(!showMenu)
@@ -34,13 +31,19 @@ export default function Header({ name, onLogout }: HeaderProps) {
 
 
       <div className="flex gap-2 items-center relative">
+        {/* Nút kết nối ví */}
         <button
-          onClick={handleConnectWallet}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-sm px-4 py-2 rounded-xl transition shadow hover:cursor-pointer"
+          onClick={address ? disconnectWallet : connectWallet}
+          className=
+          {
+            `flex items-center gap-2 text-sm px-4 py-2 rounded-xl transition shadow hover:cursor-pointer 
+            ${address ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}
+            `
+          }
         >
           <FaWallet />
-          {walletAddress
-            ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+          {address
+            ? `${address.slice(0, 6)}...${address.slice(-4)}`
             : 'Kết nối ví'}
         </button>
 

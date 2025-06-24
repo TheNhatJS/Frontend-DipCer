@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import Link from 'next/link'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -131,7 +132,7 @@ export default function RegisterPage() {
           </form>
 
           <p className="text-sm text-gray-400 mt-6 text-center">
-            Đã có tài khoản? <a href="/auth/login" className="text-blue-400 hover:underline">Đăng nhập</a>
+            Đã có tài khoản? <Link href="/auth/login" className="text-blue-400 hover:underline">Đăng nhập</Link>
           </p>
         </div>
       </main>

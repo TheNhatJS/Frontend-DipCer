@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -83,9 +84,9 @@ export default function LoginPage() {
           {/* Link đăng ký */}
           <p className="text-sm text-gray-400 mt-6 text-center">
             Chưa có tài khoản?{' '}
-            <a href="/auth/register" className="text-blue-400 hover:underline">
+            <Link href="/auth/register" className="text-blue-400 hover:underline">
               Đăng ký
-            </a>
+            </Link>
           </p>
         </div>
       </main>
