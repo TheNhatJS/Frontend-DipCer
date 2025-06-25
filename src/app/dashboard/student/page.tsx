@@ -4,43 +4,74 @@ import { useEffect, useState } from 'react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Image from 'next/image'
+import { getSession } from 'next-auth/react'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react' // 👈 Import hàm signOut
 
 export default function StudentDashboard() {
   const [studentInfo, setStudentInfo] = useState<any>(null)
   const [certificates, setCertificates] = useState<any[]>([])
+  const router = useRouter()
 
   useEffect(() => {
-    setStudentInfo({
-      id: 'SV001',
-      name: 'Nguyễn Văn A',
-      dayOfBirth: '2003-05-15',
-      phone: '0987654321',
-      courseName: 'Công nghệ thông tin',
-      institution: {
-        code: 'DAUKT',
-        name: 'Đại học Kiến Trúc Đà Nẵng',
-      },
-      addressWallet: '0x5bD...0F72',
-    })
+    const fetchData = async () => {
+      try {
+        const session = await getSession()
+        console.log("session: ", session)
+        if (!session || session.user.role !== "STUDENT") {
+          router.push("/") // 👈 Hoạt động đúng trong client component
+          return
+        }
 
-    setCertificates(
-      Array(1).fill(0).map((_, i) => ({
-        tokenId: i + 1,
-        degree: i % 2 === 0 ? 'Cử nhân Công nghệ thông tin' : 'Chứng chỉ Blockchain cơ bản',
-        issuedAt: i % 2 === 0 ? '2025-07-01' : '2025-08-12',
-        issuedBy: i % 2 === 0 ? 'Đại học Kiến Trúc Đà Nẵng' : 'Trung tâm Công nghệ SDC',
-        image: i % 2 === 0 ? '/diploma-example.png' : '/certificate-example.png',
-      }))
-    )
+        const studentId = session.user.roleId
+        console.log("studentId: ", studentId)
+
+        if (!studentId) return toast.error("Không tìm thấy mã số sinh viên!")
+
+        const res = await fetch(`http://localhost:8080/api/students/${studentId}`, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        const data = await res.json()
+        console.log("data: ", data)
+
+        if (!res.ok) throw new Error(data.message || "Lỗi khi lấy thông tin sinh viên")
+
+        setStudentInfo(data)
+
+        // Tạm thời giả lập certificates
+        setCertificates([
+          {
+            tokenId: 1,
+            degree: 'Cử nhân Công nghệ thông tin',
+            issuedAt: '2025-07-01',
+            issuedBy: '0xa496ac5d91315413Ad38e56f0f3c600794231371',
+            image: '/img/mau-moi-bang-dai-hoc.jpg',
+          }
+        ])
+      } catch (error: any) {
+        console.error("Lỗi:", error)
+        toast.error(error.message || "Đã xảy ra lỗi")
+      }
+    }
+
+
+    fetchData()
   }, [])
+
 
   return (
     <div className="min-h-screen text-white">
       <Header
         name={studentInfo?.name}
-        onLogout={() => {
-          alert('Đã đăng xuất!')
-          window.location.href = '/auth/login'
+        onLogout={async () => {
+          await signOut({
+            callbackUrl: '/' // 👈 Redirect về home sau khi đăng xuất
+          })
         }}
       />
 
@@ -53,11 +84,11 @@ export default function StudentDashboard() {
             <div className="flex-1 bg-white/5 p-6 rounded-2xl border border-white/10 shadow-lg backdrop-blur">
               <div className="space-y-2 text-sm text-gray-200">
                 <p><strong>👤 Họ tên: </strong>{studentInfo.name}</p>
-                <p><strong>🎂 Ngày sinh:</strong> {studentInfo.dayOfBirth}</p>
+                <p><strong>🏫 Khoa:</strong> {studentInfo.courseName}</p>
+                <p><strong>🎓 Mã trường:</strong> {studentInfo.institutionCode}</p>
+                <p><strong>🎂 Ngày sinh:</strong> {studentInfo.dayOfBirth ? new Date(studentInfo.dayOfBirth).toLocaleDateString('vi-VN') : 'Không có'}</p>
                 <p><strong>📞 SĐT:</strong> {studentInfo.phone}</p>
                 <p><strong>🆔 Mã số SV:</strong> <span className="font-mono">{studentInfo.id}</span></p>
-                <p><strong>🏫 Khoa:</strong> {studentInfo.courseName}</p>
-                <p><strong>🎓 Trường:</strong> {studentInfo.institution.name}</p>
                 <p><strong>💼 Ví:</strong> <span className="font-mono text-blue-400">{studentInfo.addressWallet}</span></p>
               </div>
             </div>
@@ -78,12 +109,13 @@ export default function StudentDashboard() {
           {certificates.map((cert) => (
             <div key={cert.tokenId} className="bg-white/5 border border-white/10 p-4 rounded-2xl shadow hover:shadow-lg transition-all">
               <Image
-                src={`/img/mau-moi-bang-dai-hoc.jpg`}
+                src={cert.image}
                 alt="Certificate"
                 width={400}
                 height={200}
                 className="rounded mb-3 w-full h-48 object-cover"
               />
+
               <div className="text-sm text-gray-300 space-y-1">
                 <p><strong>🎓 Văn bằng:</strong> {cert.degree}</p>
                 <p><strong>🏫 Đơn vị cấp:</strong> {cert.issuedBy}</p>
@@ -97,6 +129,7 @@ export default function StudentDashboard() {
                   🔗 Xem trên Etherscan
                 </a>
               </div>
+
             </div>
           ))}
         </div>
