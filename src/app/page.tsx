@@ -10,14 +10,33 @@ import Process from '@/components/Home/process'
 import { toast, Toaster } from 'sonner'
 import { getSession } from 'next-auth/react'
 import { signOut } from 'next-auth/react' // 👈 Import hàm signOut
+import { ethers } from 'ethers'
+import Contract from '@/data/abi.contract.json' // Đảm bảo ABI có hàm getDiploma
+import detectEthereumProvider from '@metamask/detect-provider'
+import axios from 'axios'
+import getIpfsUrlFromPinata from './api/upload/image/utils'
 
 export default function Home() {
   const [tokenId, setTokenId] = useState('')
-  const [certificateData, setCertificateData] = useState<any>(null)
+  const [diplomaData, setDiplomaData] = useState<any>(null)
   const [showModal, setShowModal] = useState(false)
   const [studentInfo, setStudentInfo] = useState<any>(null)
 
   const searchSectionRef = useRef<HTMLDivElement>(null)
+
+  function formatDate(epoch: any): string {
+    try {
+      // Xử lý nếu là BigInt
+      const time = typeof epoch === 'bigint' ? Number(epoch) : parseInt(epoch);
+      const date = new Date(time * 1000);
+      return isNaN(date.getTime()) ? 'Không rõ' : date.toLocaleDateString('vi-VN');
+    } catch {
+      return 'Không rõ';
+    }
+  }
+
+
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -56,23 +75,74 @@ export default function Home() {
   }, [])
 
   const handleSearch = async () => {
-    if (tokenId === '1') {
-      setCertificateData({
-        name: 'Nguyễn Văn A',
-        degree: 'Cử nhân Công nghệ thông tin',
-        issuedBy: 'Đại học Kiến Trúc Đà Nẵng',
-        issuedAt: '01/07/2025',
-        image: '/diploma-example.png',
+    try {
+      if (!tokenId || isNaN(Number(tokenId))) {
+        toast.error("Vui lòng nhập Token ID hợp lệ!")
+        return
+      }
+
+      // 1. Kết nối MetaMask
+      const provider: any = await detectEthereumProvider()
+      if (!provider) {
+        toast.error('Không tìm thấy MetaMask')
+        return
+      }
+
+      const ethersProvider = new ethers.BrowserProvider(provider)
+      const signer = await ethersProvider.getSigner()
+
+      // 2. Kết nối contract
+      const contract = new ethers.Contract(Contract.address, Contract.abi, signer)
+
+      // 3. Gọi hàm getDiploma(uint tokenId)
+      const diploma = await contract.getDiploma(Number(tokenId))
+      console.log("diploma", diploma);
+
+      // 4. Load metadata từ IPFS (tokenURI là CID hoặc URL)
+      const tokenURI = await contract.tokenURI(tokenId);
+      const metadata = (await axios.get(tokenURI)).data;
+
+      console.log("metadata: ", metadata);
+
+      const rawImageUrl = metadata.imageCID;
+      if (!rawImageUrl) {
+        toast.error("Không tìm thấy đường dẫn ảnh trong metadata");
+        return;
+      }
+
+      const IPFSUrl = getIpfsUrlFromPinata(rawImageUrl);
+
+      console.log("IPFSUrl: ", IPFSUrl);
+
+      // 5. Set dữ liệu để hiển thị modal
+      setDiplomaData({
+        name: metadata.fullName,
+        degree: metadata.classification,
+        issuedBy: diploma.issuer,
+        image: IPFSUrl,
+        dayOfBirth: metadata.dayOfBirth,
+        issuedAt: diploma.issueDate,
+        address: diploma.student,
+        school: metadata.school,
+        faculty: metadata.faculty
       })
+
+      // Mở modal sau 1 tick để đảm bảo state được cập nhật
+      setTimeout(() => {
+        setShowModal(true)
+      }, 0)
+
+      console.log("diplomaDetail", diplomaData);
+
       setShowModal(true)
-    } else {
-      setCertificateData(null)
+    } catch (error: any) {
+      console.error(error)
+      toast.error('Không tìm thấy hoặc không thể truy xuất văn bằng!')
+      setDiplomaData(null)
       setShowModal(false)
-
-      toast.error('Không tìm thấy văn bằng với Token ID này!')
-
     }
   }
+
 
   const scrollToSearch = () => {
     setTimeout(() => {
@@ -90,7 +160,6 @@ export default function Home() {
           })
         }}
       />
-
       <Toaster position="top-right" richColors />
 
       {/* Slide */}
@@ -147,39 +216,50 @@ export default function Home() {
       </section>
 
       {/* Modal */}
-      {showModal && certificateData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-[#1F2227] text-white rounded-2xl shadow-2xl overflow-hidden w-[90%] max-w-3xl flex flex-col sm:flex-row">
+      {showModal && diplomaData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
+          <div className="bg-[#1E1E24] text-white rounded-2xl overflow-hidden w-full max-w-7xl shadow-xl flex flex-col sm:flex-row">
+            {/* Left: Diploma image */}
             <div className="sm:w-1/2 relative h-64 sm:h-auto">
-              <Image
-                src={certificateData.image}
-                alt="Diploma Image"
-                fill
-                className="object-cover rounded-t-2xl sm:rounded-l-2xl sm:rounded-tr-none"
+              <img
+                src={diplomaData.image}
+                alt="Diploma"
+                className="w-full h-full object-cover rounded-t-2xl sm:rounded-l-2xl sm:rounded-tr-none"
               />
             </div>
-            <div className="sm:w-1/2 p-6 flex flex-col justify-between gap-2">
-              <div className='flex flex-col gap-2'>
-                <h3 className="text-xl font-bold text-indigo-400 mb-3">
-                  Thông tin văn bằng
-                </h3>
-                <p className="mb-1"><strong>Họ tên:</strong> {certificateData.name}</p>
-                <p className="mb-1"><strong>Văn bằng:</strong> {certificateData.degree}</p>
-                <p className="mb-1"><strong>Đơn vị cấp:</strong> {certificateData.issuedBy}</p>
-                <p className="mb-1"><strong>Ngày cấp:</strong> {certificateData.issuedAt}</p>
+
+            {/* Right: Info */}
+            <div className="sm:w-1/2 p-6 flex flex-col justify-between">
+              <div className="space-y-2 text-sm sm:text-base">
+                <h3 className="text-2xl font-bold text-blue-400 mb-3">🎓 Thông tin văn bằng</h3>
+
+                <p><span className="font-semibold text-white/80">👤 Họ tên:</span> {diplomaData.name}</p>
+                <p><span className="font-semibold text-white/80">🎂 Ngày sinh:</span> {diplomaData.dayOfBirth ? new Date(diplomaData.dayOfBirth).toLocaleDateString('vi-VN') : 'Không có'}</p>
+                <p><span className="font-semibold text-white/80">🏫 Trường:</span> {diplomaData.school}</p>
+                <p><span className="font-semibold text-white/80">🏛️ Khoa:</span> {diplomaData.faculty}</p>
+                <p><span className="font-semibold text-white/80">📄 Văn bằng:</span> {diplomaData.degree}</p>
+                <p><span className="font-semibold text-white/80">🏢 Đơn vị cấp:</span>
+                  <span className="break-all block text-gray-300">{diplomaData.issuedBy}</span>
+                </p>
+                <p><span className="font-semibold text-white/80">📅 Ngày cấp:</span> {formatDate(diplomaData.issuedAt)}</p>
+                <p><span className="font-semibold text-white/80">Địa chỉ ví:</span>
+                  <span className="break-all block text-gray-300">{diplomaData.address}</span>
+                </p>
+
                 <a
-                  href={`https://sepolia.etherscan.io/token/0xYourContractAddress?a=${tokenId}`}
+                  href={`https://testnets.opensea.io/assets/sepolia/0xe8387C334AC422477785146C5FDF66B52d9654A6/${tokenId}`}
                   target="_blank"
-                  className="mt-3 text-sm text-blue-400 hover:underline text-left"
                   rel="noopener noreferrer"
+                  className="inline-block mt-2 text-sm text-blue-400 hover:underline"
                 >
-                  Xem trên Etherscan
+                  🔍 Xem trên Etherscan
                 </a>
               </div>
-              <div className="mt-6 flex flex-col items-end">
+
+              <div className="mt-6 flex justify-end">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition"
+                  className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm transition-all"
                 >
                   Đóng
                 </button>
@@ -188,6 +268,8 @@ export default function Home() {
           </div>
         </div>
       )}
+
+
 
       <Footer />
     </div>
