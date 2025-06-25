@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Footer from '@/components/Footer'
 import Header from '@/components/Header'
@@ -8,13 +8,52 @@ import SlideSelection from '@/components/Home/slide'
 import Features from '@/components/Home/feature'
 import Process from '@/components/Home/process'
 import { toast, Toaster } from 'sonner'
+import { getSession } from 'next-auth/react'
+import { signOut } from 'next-auth/react' // 👈 Import hàm signOut
 
 export default function Home() {
   const [tokenId, setTokenId] = useState('')
   const [certificateData, setCertificateData] = useState<any>(null)
   const [showModal, setShowModal] = useState(false)
+  const [studentInfo, setStudentInfo] = useState<any>(null)
 
   const searchSectionRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const session = await getSession()
+        console.log("session: ", session)
+        if (session && session.user?.role === "STUDENT") {
+          const studentId = session.user.roleId
+          console.log("studentId: ", studentId)
+
+          if (!studentId) return toast.error("Không tìm thấy mã số sinh viên!")
+
+          const res = await fetch(`http://localhost:8080/api/students/${studentId}`, {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+
+          const data = await res.json()
+          console.log("data: ", data)
+
+          if (!res.ok) throw new Error(data.message || "Lỗi khi lấy thông tin sinh viên")
+
+          setStudentInfo(data)
+
+        }
+
+      } catch (error: any) {
+        console.error("Lỗi:", error)
+        toast.error(error.message || "Đã xảy ra lỗi")
+      }
+
+    }
+    fetchData()
+  }, [])
 
   const handleSearch = async () => {
     if (tokenId === '1') {
@@ -43,7 +82,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#202328] text-white relative">
-      <Header />
+      <Header
+        name={studentInfo?.name}
+        onLogout={async () => {
+          await signOut({
+            callbackUrl: '/' // 👈 Redirect về home sau khi đăng xuất
+          })
+        }}
+      />
 
       <Toaster position="top-right" richColors />
 

@@ -59,6 +59,11 @@ export default function Header({ name, onLogout }: HeaderProps) {
 
             {showMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-[#2B2F36] rounded-lg shadow-lg border border-[#3A3D45] z-50">
+                <Link href="/dashboard/student">
+                  <button className="w-48 rounded-lg px-4 py-2 text-sm text-white hover:bg-white hover:text-black text-center hover:cursor-pointer">
+                    Dashboard
+                  </button>
+                </Link>
                 <button
                   onClick={onLogout}
                   className="w-48 rounded-lg px-4 py-2 text-sm text-red-400 hover:bg-red-500 hover:text-white text-center hover:cursor-pointer"

@@ -17,8 +17,14 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showRePassword, setShowRePassword] = useState(false)
 
-  const handleRegister = (e: React.FormEvent) => {
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
 
     if (password !== rePassword) {
       setError('Mật khẩu không khớp!')
@@ -30,8 +36,44 @@ export default function RegisterPage() {
       return
     }
 
-    alert(`Đăng ký thành công với vai trò: ${role === 'DIP_ISSUER' ? 'Trường Đại học' : 'Sinh viên'}`)
-    router.push('/auth/login')
+    if (!isValidEmail(email)) {
+      setError('Email không hợp lệ!')
+      return
+    }
+
+    try {
+      const res = await fetch('http://localhost:8080/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          role: role === 'student' ? 'STUDENT' : 'DIP_ISSUER',
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.message || 'Đăng ký thất bại')
+        return
+      }
+
+      const userId = data.id // 👈 lấy ID từ response
+
+      // ✅ Điều hướng kèm ID trên URL
+      if (role === 'student') {
+        router.push(`/auth/register/info-student?userId=${userId}`)
+      } else {
+        router.push(`/auth/register/info-dip-issuer?userId=${userId}`)
+      }
+
+    } catch (err) {
+      console.error('Lỗi khi đăng ký:', err)
+      setError('Đã xảy ra lỗi. Vui lòng thử lại sau.')
+    }
   }
 
   return (
