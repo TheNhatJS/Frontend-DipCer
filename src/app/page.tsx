@@ -10,15 +10,11 @@ import Process from '@/components/Home/process'
 import { toast, Toaster } from 'sonner'
 
 export default function Home() {
-  const [walletAddress, setWalletAddress] = useState<string | null>(null)
   const [tokenId, setTokenId] = useState('')
   const [certificateData, setCertificateData] = useState<any>(null)
   const [showModal, setShowModal] = useState(false)
 
   const searchSectionRef = useRef<HTMLDivElement>(null)
-  const handleConnectWallet = () => {
-    setWalletAddress('0x1234567890abcdef1234567890abcdef12345678')
-  }
 
   const handleSearch = async () => {
     if (tokenId === '1') {

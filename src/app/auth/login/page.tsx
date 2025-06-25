@@ -6,6 +6,9 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
 import Link from 'next/link'
+import { getSession, signIn } from "next-auth/react"
+import { toast, Toaster } from 'sonner'
+
 
 export default function LoginPage() {
   const router = useRouter()
@@ -13,15 +16,44 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (email === 'admin@example.com' && password === '123456') {
-      alert('Đăng nhập thành công!')
-      router.push('/')
-    } else {
-      alert('Email hoặc mật khẩu không đúng!')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+
+    const res = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
+    console.log("SignIn response:", res); // 🪵 Log xem rõ giá trị
+
+    // ❗ Dựa vào res.error thay vì res.ok
+    if (res?.error === "CredentialsSignin") {
+      toast.error("Email hoặc mật khẩu không đúng!");
+      setErrorMessage("Email hoặc mật khẩu không chính xác!");
+      return;
     }
-  }
+
+    if (res?.error) {
+      toast.error("Đã xảy ra lỗi. Vui lòng thử lại sau.");
+      setErrorMessage("Lỗi không xác định.");
+      return;
+    }
+
+    // ✅ Nếu không có lỗi
+    const session = await getSession();
+    const role = session?.user?.role;
+
+    if (role === "STUDENT") router.push("/dashboard/student");
+    else if (role === "DIP_ISSUER") router.push("/dashboard/dip-issuer");
+    else router.push("/auth/login");
+  };
+
+
+
 
   return (
     <div className="min-h-screen flex flex-col relative">
@@ -29,6 +61,7 @@ export default function LoginPage() {
       <div className="absolute inset-0 -z-10" />
 
       <Header />
+      <Toaster position="top-right" richColors />
 
       <main className="flex flex-1 items-center justify-center px-4">
         <div className="backdrop-blur-lg bg-white/5 border border-white/10 rounded-2xl shadow-lg p-8 w-full max-w-md text-white">

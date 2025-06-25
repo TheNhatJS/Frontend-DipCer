@@ -1,29 +1,56 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { getSession } from 'next-auth/react'
+import { DateTime } from 'next-auth/providers/kakao'
+
+type Student = {
+  id: string
+  name: string
+  courseName: string
+  phone: string
+  institutionCode: string
+  dayOfBirth: DateTime
+  addressWallet: string
+}
 
 export default function StudentListPage() {
-  const [students, setStudents] = useState<any[]>([])
-  const [selectedStudent, setSelectedStudent] = useState<any | null>(null)
+  const [students, setStudents] = useState<Student[]>([])
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
 
   useEffect(() => {
-    setStudents([
-      {
-        id: 'SV001',
-        name: 'Nguyễn Văn A',
-        courseName: 'Công nghệ thông tin',
-        phone: '0909123456',
-        institutionCode: 'DAUKT',
-      },
-      {
-        id: 'SV002',
-        name: 'Trần Thị B',
-        courseName: 'Kiến trúc',
-        phone: '0912345678',
-        institutionCode: 'DAUKT',
-      },
-    ])
+    const fetchStudents = async () => {
+      const session = await getSession()
+      const token = session?.access_token
+      const code = session?.user?.roleId // mã trường
+
+      if (!token || !code) {
+        console.warn("Không có token hoặc mã trường.")
+        return
+      }
+
+      try {
+        const res = await fetch(`http://localhost:8080/api/students/by-institution/${code}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        })
+
+        if (res.ok) {
+          const json = await res.json()
+          setStudents(json.data) // 👈 lấy `data` từ response
+        } else {
+          console.error("Không thể lấy danh sách sinh viên:", res.status)
+        }
+      } catch (error) {
+        console.error("Lỗi gọi API:", error)
+      }
+    }
+
+    fetchStudents()
   }, [])
+
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white px-6 py-10">
@@ -55,6 +82,7 @@ export default function StudentListPage() {
       </div>
 
       {/* Modal hiển thị chi tiết sinh viên */}
+      {/* Modal hiển thị chi tiết sinh viên */}
       {selectedStudent && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
           <div className="bg-[#1f2227] text-white rounded-xl shadow-2xl max-w-md w-full p-6 relative">
@@ -70,6 +98,8 @@ export default function StudentListPage() {
               <p><strong>Họ tên:</strong> {selectedStudent.name}</p>
               <p><strong>Khoa:</strong> {selectedStudent.courseName}</p>
               <p><strong>Số điện thoại:</strong> <span className="text-green-400">{selectedStudent.phone}</span></p>
+              <p><strong>Ngày sinh:</strong> {selectedStudent.dayOfBirth ? new Date(selectedStudent.dayOfBirth).toLocaleDateString('vi-VN') : 'Không có'}</p>
+              <p><strong>Địa chỉ ví:</strong> <span className="font-mono text-yellow-300">{selectedStudent.addressWallet}</span></p>
               <p><strong>Mã trường:</strong> <span className="text-purple-400">{selectedStudent.institutionCode}</span></p>
             </div>
             <div className="mt-6 text-right">
@@ -83,6 +113,7 @@ export default function StudentListPage() {
           </div>
         </div>
       )}
+
     </div>
   )
 }

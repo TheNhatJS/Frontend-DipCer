@@ -51,7 +51,7 @@ export default function Header({ name, onLogout }: HeaderProps) {
           <div className="relative">
             <button
               onClick={toggleMenu}
-              className="w-48 truncate text-sm text-white font-medium px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-xl transition text-left hover:cursor-pointer"
+              className="w-48 truncate text-sm text-white font-medium px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-xl transition text-center hover:cursor-pointer"
 
             >
               {name}

@@ -54,7 +54,7 @@ export default function CertificateListPage() {
             >
               <div className="aspect-video relative mb-4 rounded-lg overflow-hidden border border-white/10">
                 <Image
-                  src={c.image}
+                  src= {`/img/mau-moi-bang-dai-hoc.jpg`}
                   alt="Certificate"
                   fill
                   className="object-cover"

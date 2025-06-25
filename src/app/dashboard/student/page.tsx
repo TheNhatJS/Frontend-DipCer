@@ -12,7 +12,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     setStudentInfo({
       id: 'SV001',
-      name: 'Nguyễn Văn Aádfasdfasdfasdfawer dài quá dài quá dài quá',
+      name: 'Nguyễn Văn A',
       dayOfBirth: '2003-05-15',
       phone: '0987654321',
       courseName: 'Công nghệ thông tin',
@@ -24,7 +24,7 @@ export default function StudentDashboard() {
     })
 
     setCertificates(
-      Array(8).fill(0).map((_, i) => ({
+      Array(1).fill(0).map((_, i) => ({
         tokenId: i + 1,
         degree: i % 2 === 0 ? 'Cử nhân Công nghệ thông tin' : 'Chứng chỉ Blockchain cơ bản',
         issuedAt: i % 2 === 0 ? '2025-07-01' : '2025-08-12',
@@ -52,7 +52,7 @@ export default function StudentDashboard() {
             {/* Thông tin sinh viên */}
             <div className="flex-1 bg-white/5 p-6 rounded-2xl border border-white/10 shadow-lg backdrop-blur">
               <div className="space-y-2 text-sm text-gray-200">
-                <p><strong>👤 Họ tên:</strong> <span className="block truncate">{studentInfo.name}</span></p>
+                <p><strong>👤 Họ tên: </strong>{studentInfo.name}</p>
                 <p><strong>🎂 Ngày sinh:</strong> {studentInfo.dayOfBirth}</p>
                 <p><strong>📞 SĐT:</strong> {studentInfo.phone}</p>
                 <p><strong>🆔 Mã số SV:</strong> <span className="font-mono">{studentInfo.id}</span></p>
@@ -78,7 +78,7 @@ export default function StudentDashboard() {
           {certificates.map((cert) => (
             <div key={cert.tokenId} className="bg-white/5 border border-white/10 p-4 rounded-2xl shadow hover:shadow-lg transition-all">
               <Image
-                src={cert.image}
+                src={`/img/mau-moi-bang-dai-hoc.jpg`}
                 alt="Certificate"
                 width={400}
                 height={200}
