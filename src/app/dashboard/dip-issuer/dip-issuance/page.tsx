@@ -98,7 +98,7 @@ export default function IssueCertificatePage() {
         classification,
         faculty: student.courseName,
         school: student.institutionCode,
-        imageCID,
+        image: imageCID,
       }
 
       const metadataUpload = await fetch('/api/upload/metadata', {

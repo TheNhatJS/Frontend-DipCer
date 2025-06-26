@@ -104,7 +104,7 @@ export default function Home() {
 
       console.log("metadata: ", metadata);
 
-      const rawImageUrl = metadata.imageCID;
+      const rawImageUrl = metadata.image;
       if (!rawImageUrl) {
         toast.error("Không tìm thấy đường dẫn ảnh trong metadata");
         return;
@@ -238,11 +238,11 @@ export default function Home() {
                 <p><span className="font-semibold text-white/80">🏫 Trường:</span> {diplomaData.school}</p>
                 <p><span className="font-semibold text-white/80">🏛️ Khoa:</span> {diplomaData.faculty}</p>
                 <p><span className="font-semibold text-white/80">📄 Văn bằng:</span> {diplomaData.degree}</p>
+                <p><span className="font-semibold text-white/80">📅 Ngày cấp:</span> {formatDate(diplomaData.issuedAt)}</p>
                 <p><span className="font-semibold text-white/80">🏢 Đơn vị cấp:</span>
                   <span className="break-all block text-gray-300">{diplomaData.issuedBy}</span>
                 </p>
-                <p><span className="font-semibold text-white/80">📅 Ngày cấp:</span> {formatDate(diplomaData.issuedAt)}</p>
-                <p><span className="font-semibold text-white/80">Địa chỉ ví:</span>
+                <p><span className="font-semibold text-white/80">Địa chỉ sở hữu:</span>
                   <span className="break-all block text-gray-300">{diplomaData.address}</span>
                 </p>
 
