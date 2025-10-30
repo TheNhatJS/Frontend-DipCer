@@ -138,6 +138,7 @@ export default function StudentDashboard() {
                 className="rounded mb-3 w-full h-48 object-cover"
               />
               <div className="text-sm text-gray-300 space-y-1">
+                <p><strong>Token ID:</strong> {dip.tokenId}</p>
                 <p><strong>🎓 Văn bằng:</strong> {dip.degree}</p>
                 <p><strong>🏫 Đơn vị cấp:</strong> {dip.issuedBy}</p>
                 <p><strong>📅 Ngày cấp:</strong> {dip.issuedAt}</p>

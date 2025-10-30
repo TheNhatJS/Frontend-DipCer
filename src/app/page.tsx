@@ -247,7 +247,7 @@ export default function Home() {
                 </p>
 
                 <a
-                  href={`https://testnets.opensea.io/assets/sepolia/0xe8387C334AC422477785146C5FDF66B52d9654A6/${tokenId}`}
+                  href={`https://sepolia.etherscan.io/token/0xe8387c334ac422477785146c5fdf66b52d9654a6?${tokenId}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-block mt-2 text-sm text-blue-400 hover:underline"

@@ -125,6 +125,7 @@ export default function CertificateListPage() {
                 <img src={c.image} alt="Certificate" className="object-cover w-full h-full" />
               </div>
               <div className="space-y-2 text-sm">
+                <p><span className="text-blue-300 font-semibold">Token ID:</span> <span className="font-mono">{c.tokenId}</span></p>
                 <p><span className="text-blue-300 font-semibold">MSSV:</span> <span className="font-mono">{c.studentId}</span></p>
                 <p><span className="text-blue-300 font-semibold">Văn bằng:</span> {c.degree}</p>
                 <p><span className="text-blue-300 font-semibold">Ngày cấp:</span> {c.issuedAt}</p>
