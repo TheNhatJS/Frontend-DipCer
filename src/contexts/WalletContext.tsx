@@ -33,8 +33,8 @@ interface MetaMaskError {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-// Thời gian timeout: 30 phút (có thể điều chỉnh)
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 phút tính bằng milliseconds
+// Thời gian timeout: 15 phút (có thể điều chỉnh)
+const SESSION_TIMEOUT = 15 * 60 * 1000; // 15 phút tính bằng milliseconds
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [address, setAddress] = useState<string | null>(null);

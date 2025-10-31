@@ -32,15 +32,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           }
 
           const decoded: any = jwtDecode(data.access_token);
+          console.log("Decoded JWT:", decoded); // Debug log
 
           return {
-            id: decoded.sub.toString(),
-            email: decoded.username,
-            role: decoded.role,
-            roleId: decoded.roleId,
+            id: decoded.id?.toString() || '',
+            email: decoded.email || '',
+            name: decoded.name || '',
+            code: decoded.code || '',
+            address: decoded.address || '',
+            role: decoded.role || '',
+            roleId: decoded.roleId || '',
             access_token: data.access_token,
             emailVerified: null,
-            name: decoded.username,
           };
         } catch (err) {
           console.error("Authorize error:", err);
