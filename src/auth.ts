@@ -1,6 +1,7 @@
 import { jwtDecode } from "jwt-decode";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials"
+import axios from "axios";
 
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -18,16 +19,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         try {
-          const res = await fetch("http://localhost:8080/api/auth/login", {
-            method: 'POST',
-            body: JSON.stringify(credentials),
-            headers: { "Content-Type": "application/json" },
-          });
+          // Sử dụng axios thay vì fetch
+          const response = await axios.post(
+            "http://localhost:8080/api/auth/login",
+            credentials,
+            {
+              headers: { "Content-Type": "application/json" },
+            }
+          );
 
-          const data = await res.json();
+          const data = response.data;
 
-          if (!res.ok || !data.access_token) {
-            console.error("Login API error:", res.status, data);
+          if (!data.access_token) {
+            console.error("Login API error: No access token");
             return null; // ✅ Return null để NextAuth hiểu là login thất bại
           }
 
@@ -43,10 +47,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             role: decoded.role || '',
             roleId: decoded.roleId || '',
             access_token: data.access_token,
+            refresh_token: data.refresh_token,
             emailVerified: null,
           };
-        } catch (err) {
-          console.error("Authorize error:", err);
+        } catch (err: any) {
+          console.error("Authorize error:", err.response?.data || err.message);
           return null;
         }
       }
@@ -56,14 +61,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.user = user as any; // hoặc ép kiểu rõ ràng: `as User`
+        token.user = user as any;
         token.access_token = user.access_token;
+        token.refresh_token = user.refresh_token;
       }
       return token;
     },
     async session({ session, token }) {
-      session.user = token.user as any; // hoặc ép kiểu rõ ràng: `as User`
+      session.user = token.user as any;
       session.access_token = token.access_token as string;
+      session.refresh_token = token.refresh_token as string;
       return session;
     }
   },

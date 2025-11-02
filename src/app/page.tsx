@@ -9,7 +9,6 @@ import Features from '@/components/Home/feature'
 import Process from '@/components/Home/process'
 import { toast, Toaster } from 'sonner'
 import { getSession } from 'next-auth/react'
-import { signOut } from 'next-auth/react' // 👈 Import hàm signOut
 import { ethers } from 'ethers'
 import Contract from '@/data/abi.contract.json' // Đảm bảo ABI có hàm getDiploma
 import detectEthereumProvider from '@metamask/detect-provider'
@@ -152,14 +151,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#202328] text-white relative">
-      <Header
-        name={studentInfo?.name}
-        onLogout={async () => {
-          await signOut({
-            callbackUrl: '/' // 👈 Redirect về home sau khi đăng xuất
-          })
-        }}
-      />
+      <Header/>
       <Toaster position="top-right" richColors />
 
       {/* Slide */}

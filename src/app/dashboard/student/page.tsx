@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Image from 'next/image'
-import { getSession, signOut } from 'next-auth/react'
+import { getSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ethers } from 'ethers'
@@ -86,12 +86,7 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen text-white">
-      <Header
-        name={studentInfo?.name}
-        onLogout={async () => {
-          await signOut({ callbackUrl: '/' })
-        }}
-      />
+      <Header name={studentInfo?.name} />
 
       <main className="pt-[80px] pb-[80px] px-6 max-w-7xl mx-auto">
         <h2 className="text-3xl font-bold mb-6">🎓 Thông tin sinh viên</h2>

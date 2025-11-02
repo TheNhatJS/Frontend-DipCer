@@ -2,17 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import { getSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { FaUniversity, FaUserGraduate, FaChalkboardTeacher, FaCertificate, FaPlus } from 'react-icons/fa'
+import { toast, Toaster } from 'sonner'
 
 type IssuerInfo = {
   code: string
-  name: string
+  schoolName: string
   addressWallet: string
+}
+
+type DashboardStats = {
+  totalStudents: number
+  totalDelegates: number
+  totalDiplomas: number
 }
 
 export default function IssuerInfoPage() {
   const [issuerInfo, setIssuerInfo] = useState<IssuerInfo | null>(null)
+  const [stats, setStats] = useState<DashboardStats>({ totalStudents: 0, totalDelegates: 0, totalDiplomas: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     const fetchIssuerInfo = async () => {
@@ -24,17 +35,12 @@ export default function IssuerInfoPage() {
         const code = session?.user?.roleId
         const token = session?.access_token
         
-        console.log("Session", session)
-        console.log("RoleId", code)
-        console.log("Token", token)
-
         if (!code || !token) {
           setError("Không tìm thấy thông tin phiên đăng nhập")
           return
         }
 
-        console.log("Đang tải dữ liệu...")
-
+        // Fetch issuer info
         const res = await fetch(`http://localhost:8080/api/dip-issuer/${code}`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -42,19 +48,17 @@ export default function IssuerInfoPage() {
           }
         })
 
-        console.log("Trạng thái phản hồi:", res.status)
-        console.log("Phản hồi thành công:", res.ok)
-
         if (!res.ok) {
           const text = await res.text()
-          console.error("Lỗi backend:", res.status, text)
           setError(`Lỗi API: ${res.status} - ${text}`)
-          return // Thoát sớm khi có lỗi
+          return
         }
 
         const data = await res.json()
-        console.log("Dữ liệu nhận được:", data)
         setIssuerInfo(data)
+
+        // Fetch statistics
+        await fetchStatistics(token)
         
       } catch (err) {
         console.error("Lỗi tải dữ liệu:", err)
@@ -64,16 +68,44 @@ export default function IssuerInfoPage() {
       }
     }
 
+    const fetchStatistics = async (token: string) => {
+      try {
+        // Fetch students count
+        const studentsRes = await fetch(`http://localhost:8080/api/students/by-institution`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        })
+        
+        // Fetch delegates count
+        const delegatesRes = await fetch(`http://localhost:8080/api/dip-delegate?pageSize=1`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        })
+
+        const studentsData = await studentsRes.json()
+        const delegatesData = await delegatesRes.json()
+
+        setStats({
+          totalStudents: studentsData.pagination?.total || 0,
+          totalDelegates: delegatesData.pagination?.total || 0,
+          totalDiplomas: 0 // TODO: Add diploma count API
+        })
+      } catch (err) {
+        console.error("Lỗi tải thống kê:", err)
+      }
+    }
+
     fetchIssuerInfo()
   }, [])
-
-  useEffect(() => {
-    console.log("Trạng thái IssuerInfo được cập nhật:", issuerInfo)
-  }, [issuerInfo])
 
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col text-white rounded-3xl">
+        <Toaster position="top-right" richColors />
         <main className="flex-1 px-6 py-10 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
@@ -87,6 +119,7 @@ export default function IssuerInfoPage() {
   if (error) {
     return (
       <div className="min-h-screen flex flex-col text-white rounded-3xl">
+        <Toaster position="top-right" richColors />
         <main className="flex-1 px-6 py-10 flex items-center justify-center">
           <div className="w-full max-w-2xl">
             <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
@@ -100,44 +133,125 @@ export default function IssuerInfoPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col text-white rounded-3xl">
-      <main className="flex-1 px-6 py-10 flex items-center justify-center">
-        <div className="w-full max-w-2xl space-y-6">
-          <div className="bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_0_20px_rgba(56,182,255,0.1)] rounded-2xl px-6 py-8">
-            <h1 className="text-3xl font-bold text-blue-400 mb-2">
-              🏫 Thông tin đơn vị cấp bằng
-            </h1>
-            <p className="text-gray-400 text-sm">
-              Các thông tin bên dưới được xác thực và lưu trữ trên blockchain.
-            </p>
+    <div className="min-h-screen flex flex-col text-white">
+      <Toaster position="top-right" richColors />
+      
+      <main className="flex-1 px-6 py-10 max-w-7xl mx-auto w-full">
+        {/* Header Section */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
+            🏫 Dashboard Nhà trường
+          </h1>
+          <p className="text-gray-400">
+            Quản lý sinh viên, giảng viên và văn bằng
+          </p>
+        </div>
+
+        {/* Institution Info Card */}
+        {issuerInfo && (
+          <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-md border border-blue-500/20 rounded-2xl p-6 mb-8 shadow-lg">
+            <div className="flex items-center gap-3 mb-4">
+              <FaUniversity className="text-4xl text-blue-400" />
+              <div>
+                <h2 className="text-2xl font-bold text-white">{issuerInfo.schoolName}</h2>
+                <p className="text-blue-300">Mã trường: {issuerInfo.code}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 mt-4">
+              <span className="font-semibold text-gray-300">Ví blockchain:</span>
+              <span className="font-mono text-green-400 bg-green-900/20 px-3 py-1 rounded-lg text-sm">
+                {issuerInfo.addressWallet}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 hover:shadow-blue-500/20 hover:shadow-lg transition-all">
+            <div className="flex items-center justify-between mb-4">
+              <FaUserGraduate className="text-4xl text-blue-400" />
+              <span className="text-3xl font-bold text-blue-400">{stats.totalStudents}</span>
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-1">Sinh viên</h3>
+            <p className="text-sm text-gray-400">Tổng số sinh viên</p>
           </div>
 
-          {issuerInfo && (
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 shadow-inner shadow-blue-500/10 rounded-xl p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-white">Mã trường:</span>
-                <span className="text-blue-300">{issuerInfo.code}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-white">Tên trường:</span>
-                <span className="text-blue-300">{issuerInfo.name}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-white">Ví blockchain:</span>
-                <span className="font-mono text-green-400 bg-green-900/20 px-2 py-1 rounded-lg text-sm">
-                  {issuerInfo.addressWallet}
-                </span>
-              </div>
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 hover:shadow-purple-500/20 hover:shadow-lg transition-all">
+            <div className="flex items-center justify-between mb-4">
+              <FaChalkboardTeacher className="text-4xl text-purple-400" />
+              <span className="text-3xl font-bold text-purple-400">{stats.totalDelegates}</span>
             </div>
-          )}
+            <h3 className="text-lg font-semibold text-white mb-1">Giảng viên</h3>
+            <p className="text-sm text-gray-400">Tổng số giảng viên</p>
+          </div>
 
-          {!issuerInfo && (
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-6 text-center">
-              <p className="text-yellow-300">Không tìm thấy thông tin đơn vị cấp bằng</p>
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 hover:shadow-green-500/20 hover:shadow-lg transition-all">
+            <div className="flex items-center justify-between mb-4">
+              <FaCertificate className="text-4xl text-green-400" />
+              <span className="text-3xl font-bold text-green-400">{stats.totalDiplomas}</span>
             </div>
-          )}
+            <h3 className="text-lg font-semibold text-white mb-1">Văn bằng</h3>
+            <p className="text-sm text-gray-400">Đã cấp phát</p>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+            <FaPlus className="text-blue-400" />
+            Thao tác nhanh
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              onClick={() => router.push('/dashboard/dip-issuer/students/add')}
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 p-6 rounded-xl transition-all shadow-lg hover:shadow-blue-500/30 hover:scale-105 flex items-center gap-4"
+            >
+              <FaUserGraduate className="text-3xl" />
+              <div className="text-left">
+                <h3 className="text-xl font-bold">Thêm Sinh viên</h3>
+                <p className="text-sm text-blue-100">Thêm một hoặc nhiều sinh viên</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => router.push('/dashboard/dip-issuer/delegates/add')}
+              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 p-6 rounded-xl transition-all shadow-lg hover:shadow-purple-500/30 hover:scale-105 flex items-center gap-4"
+            >
+              <FaChalkboardTeacher className="text-3xl" />
+              <div className="text-left">
+                <h3 className="text-xl font-bold">Thêm Giảng viên</h3>
+                <p className="text-sm text-purple-100">Thêm một hoặc nhiều giảng viên</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Management Links */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <button
+            onClick={() => router.push('/dashboard/dip-issuer/students')}
+            className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl transition-all text-left"
+          >
+            <h3 className="font-semibold text-lg mb-1">📚 Danh sách Sinh viên</h3>
+            <p className="text-sm text-gray-400">Xem và quản lý sinh viên</p>
+          </button>
+
+          <button
+            onClick={() => router.push('/dashboard/dip-issuer/delegates')}
+            className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl transition-all text-left"
+          >
+            <h3 className="font-semibold text-lg mb-1">👨‍🏫 Danh sách Giảng viên</h3>
+            <p className="text-sm text-gray-400">Xem và quản lý giảng viên</p>
+          </button>
+
+          <button
+            onClick={() => router.push('/dashboard/dip-issuer/diplomas')}
+            className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl transition-all text-left"
+          >
+            <h3 className="font-semibold text-lg mb-1">🎓 Quản lý Văn bằng</h3>
+            <p className="text-sm text-gray-400">Cấp phát và thu hồi văn bằng</p>
+          </button>
         </div>
       </main>
     </div>

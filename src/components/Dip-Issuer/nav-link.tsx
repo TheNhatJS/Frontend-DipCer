@@ -2,32 +2,86 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { HiHome, HiUserGroup, HiDocumentText } from 'react-icons/hi';
+import { 
+  HiHome, 
+  HiUserGroup, 
+  HiDocumentText, 
+  HiAcademicCap,
+  HiChartBar,
+  HiUsers
+} from 'react-icons/hi';
 
 const links = [
-  { name: 'Thông tin trường', href: '/dashboard/dip-issuer', icon: <HiHome /> },
-  { name: 'Danh sách sinh viên', href: '/dashboard/dip-issuer/students', icon: <HiUserGroup /> },
-  { name: 'Văn bằng đã cấp', href: '/dashboard/dip-issuer/diplomas', icon: <HiDocumentText /> },
-  { name: 'Cấp phát văn bằng', href: '/dashboard/dip-issuer/dip-issuance', icon: <HiDocumentText /> },
+  { 
+    name: 'Tổng quan', 
+    href: '/dashboard/dip-issuer', 
+    icon: HiHome,
+    description: 'Dashboard và thống kê'
+  },
+  { 
+    name: 'Sinh viên', 
+    href: '/dashboard/dip-issuer/students', 
+    icon: HiAcademicCap,
+    description: 'Quản lý sinh viên'
+  },
+  { 
+    name: 'Giảng viên', 
+    href: '/dashboard/dip-issuer/delegates', 
+    icon: HiUsers,
+    description: 'Quản lý giảng viên'
+  },
+  { 
+    name: 'Văn bằng', 
+    href: '/dashboard/dip-issuer/diplomas', 
+    icon: HiDocumentText,
+    description: 'Văn bằng đã cấp'
+  },
+  { 
+    name: 'Cấp phát', 
+    href: '/dashboard/dip-issuer/dip-issuance', 
+    icon: HiChartBar,
+    description: 'Cấp phát văn bằng mới'
+  },
 ];
 
 export default function NavLinks() {
   const pathname = usePathname();
 
   return (
-    <>
-      {links.map((link) => (
-        <Link
-          key={link.name}
-          href={link.href}
-          className={`flex items-center gap-3 px-4 py-2 my-1 rounded-lg transition-colors ${pathname === link.href
-            ? 'bg-indigo-600 text-white'
-            : 'text-gray-300 hover:bg-indigo-700 hover:text-white'}`}
-        >
-          <span className="text-lg">{link.icon}</span>
-          <span>{link.name}</span>
-        </Link>
-      ))}
-    </>
+    <nav className="space-y-2">
+      {links.map((link) => {
+        const Icon = link.icon;
+        // Fix: Chỉ highlight chính xác trang đó
+        // Trang tổng quan chỉ active khi pathname === '/dashboard/dip-issuer'
+        // Các trang khác active khi pathname bắt đầu với href của nó
+        const isActive = link.href === '/dashboard/dip-issuer' 
+          ? pathname === link.href 
+          : pathname.startsWith(link.href);
+        
+        return (
+          <Link
+            key={link.name}
+            href={link.href}
+            className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+              isActive
+                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                : 'text-gray-300 hover:bg-white/5 hover:text-white hover:translate-x-1'
+            }`}
+          >
+            <Icon className={`text-xl flex-shrink-0 ${
+              isActive ? 'animate-pulse' : 'group-hover:scale-110 transition-transform'
+            }`} />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold truncate">{link.name}</p>
+              <p className={`text-xs truncate ${
+                isActive ? 'text-blue-100' : 'text-gray-500 group-hover:text-gray-400'
+              }`}>
+                {link.description}
+              </p>
+            </div>
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

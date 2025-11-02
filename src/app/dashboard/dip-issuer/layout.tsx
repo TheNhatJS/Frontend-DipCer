@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import SideNav from "@/components/Dip-Issuer/sidenav";
+import SideNavWrapper from "@/components/Dip-Issuer/sidenav-wrapper";
 import { redirect } from "next/navigation";
 
 export default async function IssuerLayout({ children }: { children: React.ReactNode }) {
@@ -7,18 +7,17 @@ export default async function IssuerLayout({ children }: { children: React.React
 
   // Nếu chưa đăng nhập hoặc role không phải ISSUER thì redirect
   if (!session || session.user.role !== "ISSUER") {
-    return redirect("/"); // 👈 Chuyển về trang home
+    return redirect("/");
   }
 
-  const code = session?.user?.code;
   const name = session?.user?.name;
 
   return (
-    <div className="flex h-screen flex-col md:flex-row md:overflow-hidden">
+    <div className="flex h-screen flex-col md:flex-row md:overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="w-full flex-none md:w-86">
-        <SideNav institutionName={name || "Không xác định"} />
+        <SideNavWrapper institutionName={name || "Không xác định"} />
       </div>
-      <div className="flex-grow md:overflow-y-auto md:p-2">{children}</div>
+      <div className="flex-grow md:overflow-y-auto md:p-2 pt-20 md:pt-2">{children}</div>
     </div>
   );
 }

@@ -1,22 +1,46 @@
 'use client'
 
 import { FaGraduationCap, FaWallet } from 'react-icons/fa'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useWallet } from '@/contexts/WalletContext' // Đảm bảo đã tạo và cung cấp WalletProvider
+import { useWallet } from '@/contexts/WalletContext'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { logoutUser } from '@/lib/axios'
+import { toast } from 'sonner'
 
-interface HeaderProps {
-  name?: string
-  onLogout?: () => void
-}
-
-export default function Header({ name, onLogout }: HeaderProps) {
+export default function Header() {
   const [showMenu, setShowMenu] = useState(false)
   const { address, connectWallet, disconnectWallet } = useWallet()
+  const { data: session } = useSession()
+  const router = useRouter()
 
   const toggleMenu = () => {
     setShowMenu(!showMenu)
   }
+
+  const handleLogout = async () => {
+    try {      
+      // Gọi hàm logout để xóa refresh token khỏi DB
+      await logoutUser()
+      toast.success('Đăng xuất thành công!')
+    } catch (error) {
+      console.error('Logout error:', error)
+      toast.error('Đã xảy ra lỗi khi đăng xuất!')
+    }
+  }
+
+  // Xác định dashboard URL dựa trên role
+  const getDashboardUrl = () => {
+    const role = session?.user?.role
+    if (role === 'STUDENT') return '/dashboard/student'
+    if (role === 'ISSUER') return '/dashboard/dip-issuer'
+    if (role === 'DELEGATE') return '/dashboard/delegate'
+    return '/dashboard'
+  }
+
+  // Lấy tên hiển thị (ưu tiên từ session, fallback về prop)
+  const displayName = session?.user?.name || name
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 bg-[#1A1D24]/80 backdrop-blur border-b border-[#2C2F35] shadow-lg">
@@ -47,26 +71,26 @@ export default function Header({ name, onLogout }: HeaderProps) {
             : 'Kết nối ví'}
         </button>
 
-        {name ? (
+        {displayName ? (
           <div className="relative">
             <button
               onClick={toggleMenu}
               className="w-48 truncate text-sm text-white font-medium px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-xl transition text-center hover:cursor-pointer"
 
             >
-              {name}
+              {displayName}
             </button>
 
             {showMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-[#2B2F36] rounded-lg shadow-lg border border-[#3A3D45] z-50">
-                <Link href="/dashboard/student">
-                  <button className="w-48 rounded-lg px-4 py-2 text-sm text-white hover:bg-white hover:text-black text-center hover:cursor-pointer">
+                <Link href={getDashboardUrl()}>
+                  <button className="w-full rounded-t-lg px-4 py-2 text-sm text-white hover:bg-indigo-600 text-center hover:cursor-pointer">
                     Dashboard
                   </button>
                 </Link>
                 <button
-                  onClick={onLogout}
-                  className="w-48 rounded-lg px-4 py-2 text-sm text-red-400 hover:bg-red-500 hover:text-white text-center hover:cursor-pointer"
+                  onClick={handleLogout}
+                  className="w-full rounded-b-lg px-4 py-2 text-sm text-red-400 hover:bg-red-500 hover:text-white text-center hover:cursor-pointer"
                 >
                   Đăng xuất
                 </button>
