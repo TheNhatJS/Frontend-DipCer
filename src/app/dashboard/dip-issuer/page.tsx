@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getSession } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { FaUniversity, FaUserGraduate, FaChalkboardTeacher, FaCertificate, FaPlus } from 'react-icons/fa'
 import { toast, Toaster } from 'sonner'
+import axiosInstance from '@/lib/axios'
 
 type IssuerInfo = {
   code: string
@@ -23,6 +24,7 @@ export default function IssuerInfoPage() {
   const [stats, setStats] = useState<DashboardStats>({ totalStudents: 0, totalDelegates: 0, totalDiplomas: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { data: session } = useSession()
   const router = useRouter()
 
   useEffect(() => {
@@ -31,76 +33,53 @@ export default function IssuerInfoPage() {
         setLoading(true)
         setError(null)
         
-        const session = await getSession()
         const code = session?.user?.roleId
-        const token = session?.access_token
         
-        if (!code || !token) {
+        if (!code) {
           setError("Không tìm thấy thông tin phiên đăng nhập")
           return
         }
 
-        // Fetch issuer info
-        const res = await fetch(`http://localhost:8080/api/dip-issuer/${code}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        })
-
-        if (!res.ok) {
-          const text = await res.text()
-          setError(`Lỗi API: ${res.status} - ${text}`)
-          return
-        }
-
-        const data = await res.json()
-        setIssuerInfo(data)
+        // ✅ Fetch issuer info - Sử dụng axiosInstance
+        const res = await axiosInstance.get(`/dip-issuer/${code}`)
+        setIssuerInfo(res.data)
 
         // Fetch statistics
-        await fetchStatistics(token)
+        await fetchStatistics()
         
-      } catch (err) {
+      } catch (err: any) {
         console.error("Lỗi tải dữ liệu:", err)
-        setError("Có lỗi xảy ra khi tải dữ liệu")
+        setError(err.response?.data?.message || "Có lỗi xảy ra khi tải dữ liệu")
       } finally {
         setLoading(false)
       }
     }
 
-    const fetchStatistics = async (token: string) => {
+    const fetchStatistics = async () => {
       try {
-        // Fetch students count
-        const studentsRes = await fetch(`http://localhost:8080/api/students/by-institution`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        })
+        // ✅ Fetch students count - Sử dụng axiosInstance
+        const studentsRes = await axiosInstance.get(`/students/by-institution`)
         
-        // Fetch delegates count
-        const delegatesRes = await fetch(`http://localhost:8080/api/dip-delegate?pageSize=1`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
-        })
+        // ✅ Fetch delegates count - Sử dụng axiosInstance
+        const delegatesRes = await axiosInstance.get(`/dip-delegate`)
 
-        const studentsData = await studentsRes.json()
-        const delegatesData = await delegatesRes.json()
+        const diplomasRes = await axiosInstance.get(`/diplomas/by-institution`)
+        console.log('📊 Diploma stats response:', diplomasRes.data)
 
         setStats({
-          totalStudents: studentsData.pagination?.total || 0,
-          totalDelegates: delegatesData.pagination?.total || 0,
-          totalDiplomas: 0 // TODO: Add diploma count API
+          totalStudents: studentsRes.data.pagination?.total || 0,
+          totalDelegates: delegatesRes.data.pagination?.total || 0,
+          totalDiplomas: diplomasRes.data.pagination?.totalItems || 0, // ✅ Fix: sử dụng totalItems thay vì total
         })
       } catch (err) {
         console.error("Lỗi tải thống kê:", err)
       }
     }
 
-    fetchIssuerInfo()
-  }, [])
+    if (session) {
+      fetchIssuerInfo()
+    }
+  }, [session])
 
   if (loading) {
     return (

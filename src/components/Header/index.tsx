@@ -39,8 +39,8 @@ export default function Header() {
     return '/dashboard'
   }
 
-  // Lấy tên hiển thị (ưu tiên từ session, fallback về prop)
-  const displayName = session?.user?.name || name
+  // Lấy tên hiển thị (ưu tiên từ session, fallback về email hoặc label mặc định)
+  const displayName = session?.user?.name
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 bg-[#1A1D24]/80 backdrop-blur border-b border-[#2C2F35] shadow-lg">

@@ -11,6 +11,7 @@ import {
   FaFilter,
   FaTimes,
   FaSearch,
+  FaArrowLeft,
 } from "react-icons/fa";
 import axiosInstance from "@/lib/axios";
 import { toast, Toaster } from "sonner";
@@ -53,15 +54,19 @@ export default function StudentListPage() {
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      
+
       // Dùng axios thay vì fetch
-      const { data: response } = await axiosInstance.get("/students/by-institution");
-      
+      const { data: response } = await axiosInstance.get(
+        "/students/by-institution"
+      );
+
       setStudents(response.data || []);
       setFilteredStudents(response.data || []);
     } catch (error: any) {
       console.error("Lỗi gọi API:", error);
-      toast.error(error.response?.data?.message || "Đã xảy ra lỗi khi tải dữ liệu");
+      toast.error(
+        error.response?.data?.message || "Đã xảy ra lỗi khi tải dữ liệu"
+      );
     } finally {
       setLoading(false);
     }
@@ -107,7 +112,9 @@ export default function StudentListPage() {
       setStudentToDelete(null);
     } catch (error: any) {
       console.error("Lỗi:", error);
-      toast.error(error.response?.data?.message || "Đã xảy ra lỗi khi xóa sinh viên");
+      toast.error(
+        error.response?.data?.message || "Đã xảy ra lỗi khi xóa sinh viên"
+      );
     }
   };
 
@@ -163,6 +170,12 @@ export default function StudentListPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
+          <button
+            onClick={() => router.push("/dashboard/dip-issuer")}
+            className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition"
+          >
+            <FaArrowLeft /> Quay lại Dashboard
+          </button>
           <div className="flex justify-between items-center mb-4">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-2">

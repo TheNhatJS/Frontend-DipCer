@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+// @ts-ignore: allow importing global CSS without type declarations
 import "./globals.css";
 import { WalletProvider } from '@/contexts/WalletContext'
 import ProviderLayout from "@/components/layouts/ProviderLayout";

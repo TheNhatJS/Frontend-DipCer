@@ -1,5 +1,5 @@
-import { FaCheckCircle, FaSpinner, FaEthereum } from 'react-icons/fa';
-import { getTransactionExplorerUrl } from '@/lib/contractInfo';
+import { FaCheckCircle, FaSpinner, FaEthereum } from "react-icons/fa";
+import { getTransactionExplorerUrl } from "@/lib/contractInfo";
 
 interface StepCompleteProps {
   isApprovingBlockchain?: boolean;
@@ -11,8 +11,8 @@ interface StepCompleteProps {
 export default function StepComplete({
   isApprovingBlockchain = false,
   blockchainApproved = false,
-  blockchainError = '',
-  txHash = '',
+  blockchainError = "",
+  txHash = "",
 }: StepCompleteProps) {
   return (
     <div className="text-center py-8">
@@ -59,9 +59,7 @@ export default function StepComplete({
         )}
 
         {blockchainError && (
-          <div className="text-sm text-red-400">
-            ⚠️ {blockchainError}
-          </div>
+          <div className="text-sm text-red-400">⚠️ {blockchainError}</div>
         )}
       </div>
 

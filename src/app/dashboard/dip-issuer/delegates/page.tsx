@@ -1,62 +1,145 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { getSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { FaChalkboardTeacher, FaPlus, FaArrowLeft } from 'react-icons/fa'
-import { toast, Toaster } from 'sonner'
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  FaChalkboardTeacher,
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaEye,
+  FaFilter,
+  FaTimes,
+  FaSearch,
+  FaArrowLeft,
+} from "react-icons/fa";
+import axiosInstance from "@/lib/axios";
+import { toast, Toaster } from "sonner";
 
 type Delegate = {
-  id: string
-  name: string
-  email: string
-  gender: string
-  faculty: string
-  addressWallet: string
-  dayOfBirth: string
-}
+  id: string;
+  name: string;
+  email: string;
+  gender: string;
+  faculty: string;
+  addressWallet: string;
+  dayOfBirth: string;
+};
 
 export default function DelegateListPage() {
-  const router = useRouter()
-  const [delegates, setDelegates] = useState<Delegate[]>([])
-  const [selectedDelegate, setSelectedDelegate] = useState<Delegate | null>(null)
-  const [loading, setLoading] = useState(true)
+  const router = useRouter();
+  const [delegates, setDelegates] = useState<Delegate[]>([]);
+  const [filteredDelegates, setFilteredDelegates] = useState<Delegate[]>([]);
+  const [selectedDelegate, setSelectedDelegate] = useState<Delegate | null>(
+    null
+  );
+  const [loading, setLoading] = useState(true);
+
+  const [filterFaculty, setFilterFaculty] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [delegateToDelete, setDelegateToDelete] = useState<Delegate | null>(
+    null
+  );
+
+  const uniqueFaculties = Array.from(
+    new Set(delegates.map((d) => d.faculty))
+  ).sort();
+
+  const fetchDelegates = async () => {
+    try {
+      setLoading(true);
+
+      const { data: response } = await axiosInstance.get(
+        "/dip-delegate?pageSize=100"
+      );
+
+      setDelegates(response.data || []);
+      setFilteredDelegates(response.data || []);
+    } catch (error: any) {
+      console.error("Lỗi gọi API:", error);
+      toast.error(
+        error.response?.data?.message || "Đã xảy ra lỗi khi tải dữ liệu"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDelegates = async () => {
-      const session = await getSession()
-      const token = session?.access_token
+    fetchDelegates();
+  }, []);
 
-      if (!token) {
-        toast.error("Không có token xác thực")
-        setLoading(false)
-        return
-      }
+  useEffect(() => {
+    let filtered = delegates;
 
-      try {
-        const res = await fetch(`http://localhost:8080/api/dip-delegate?pageSize=100`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        })
-
-        if (res.ok) {
-          const json = await res.json()
-          setDelegates(json.data || [])
-        } else {
-          toast.error("Không thể lấy danh sách giảng viên")
-        }
-      } catch (error) {
-        console.error("Lỗi gọi API:", error)
-        toast.error("Đã xảy ra lỗi khi tải dữ liệu")
-      } finally {
-        setLoading(false)
-      }
+    if (filterFaculty) {
+      filtered = filtered.filter((d) => d.faculty === filterFaculty);
     }
 
-    fetchDelegates()
-  }, [])
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (d) =>
+          d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          d.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          d.email.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    setFilteredDelegates(filtered);
+  }, [filterFaculty, searchTerm, delegates]);
+
+  const handleDelete = async (delegateId: string) => {
+    try {
+      await axiosInstance.delete(`/dip-delegate/${delegateId}`);
+
+      toast.success("Xóa giảng viên thành công!");
+      fetchDelegates();
+      setSelectedDelegate(null);
+      setShowDetailModal(false);
+      setShowDeleteModal(false);
+      setDelegateToDelete(null);
+    } catch (error: any) {
+      console.error("Lỗi:", error);
+      toast.error(
+        error.response?.data?.message || "Đã xảy ra lỗi khi xóa giảng viên"
+      );
+    }
+  };
+
+  const handleDeleteClick = (delegate: Delegate) => {
+    setDelegateToDelete(delegate);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    if (delegateToDelete) {
+      handleDelete(delegateToDelete.id);
+    }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setDelegateToDelete(null);
+  };
+
+  const handleViewDetail = (delegate: Delegate) => {
+    setSelectedDelegate(delegate);
+    setShowDetailModal(true);
+  };
+
+  const clearFilters = () => {
+    setFilterFaculty("");
+    setSearchTerm("");
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN");
+  };
 
   if (loading) {
     return (
@@ -67,165 +150,346 @@ export default function DelegateListPage() {
           <p className="text-gray-400">Đang tải danh sách giảng viên...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen text-white px-6 py-10">
       <Toaster position="top-right" richColors />
-      
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => router.push('/dashboard/dip-issuer')}
+            onClick={() => router.push("/dashboard/dip-issuer")}
             className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition"
           >
             <FaArrowLeft /> Quay lại Dashboard
           </button>
-          
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mb-4">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent mb-2">
                 <FaChalkboardTeacher className="inline mr-3" />
-                Danh sách Giảng viên
+                Quản lý Giảng viên
               </h1>
-              <p className="text-gray-400">Tổng số: {delegates.length} giảng viên</p>
+              <p className="text-gray-400">
+                {filteredDelegates.length !== delegates.length
+                  ? `Hiển thị ${filteredDelegates.length} / ${delegates.length} giảng viên`
+                  : `Tổng số: ${delegates.length} giảng viên`}
+              </p>
             </div>
-            
+
             <button
-              onClick={() => router.push('/dashboard/dip-issuer/delegates/add')}
+              onClick={() => router.push("/dashboard/dip-issuer/delegates/add")}
               className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-6 py-3 rounded-xl font-semibold transition shadow-lg hover:scale-105"
             >
               <FaPlus />
               Thêm giảng viên
             </button>
           </div>
-        </div>
 
-        {/* Delegates Grid */}
-        {delegates.length > 0 ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {delegates.map((delegate) => (
-              <div
-                key={delegate.id}
-                onClick={() => setSelectedDelegate(delegate)}
-                className="cursor-pointer bg-white/5 backdrop-blur-lg border border-white/10 rounded-xl p-6 transition-all duration-300 hover:shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:-translate-y-1 hover:border-purple-500/30"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">Mã GV</p>
-                    <p className="font-mono text-lg text-purple-300 font-semibold">{delegate.id}</p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    delegate.gender === 'MALE' 
-                      ? 'bg-blue-500/20 text-blue-300' 
-                      : 'bg-pink-500/20 text-pink-300'
-                  }`}>
-                    {delegate.gender === 'MALE' ? 'Nam' : 'Nữ'}
-                  </span>
+          {/* Search and Filter Bar */}
+          <div className="flex gap-3 mb-4">
+            <div className="flex-1 relative">
+              <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm theo tên, mã giảng viên, email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 px-4 py-3 rounded-xl font-semibold transition shadow-lg ${
+                showFilters
+                  ? "bg-gradient-to-r from-green-600 to-emerald-600"
+                  : "bg-white/5 hover:bg-white/10"
+              }`}
+            >
+              <FaFilter />
+              Lọc
+            </button>
+          </div>
+
+          {/* Filters */}
+          {showFilters && (
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 mb-4">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-sm mb-2">Khoa</label>
+                  <select
+                    value={filterFaculty}
+                    onChange={(e) => setFilterFaculty(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">Tất cả khoa</option>
+                    {uniqueFaculties.map((faculty) => (
+                      <option key={faculty} value={faculty}>
+                        {faculty}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <p className="mb-2 flex items-center gap-2">
-                  <span className="font-semibold text-purple-300">👤 Họ tên:</span>
-                  <span className="text-white">{delegate.name}</span>
-                </p>
-                
-                <p className="mb-2 flex items-center gap-2">
-                  <span className="font-semibold text-purple-300">🏫 Khoa:</span>
-                  <span className="text-white">{delegate.faculty}</span>
-                </p>
-
-                <p className="text-sm text-gray-400 truncate">
-                  📧 {delegate.email}
-                </p>
+                <button
+                  onClick={clearFilters}
+                  className="self-end px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 rounded-lg transition"
+                >
+                  Xóa bộ lọc
+                </button>
               </div>
-            ))}
+            </div>
+          )}
+        </div>
+
+        {/* Delegates Table */}
+        {filteredDelegates.length === 0 ? (
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-12 text-center">
+            <FaChalkboardTeacher className="mx-auto text-6xl text-gray-500 mb-4" />
+            <p className="text-gray-400 text-lg">
+              {searchTerm || filterFaculty
+                ? "Không tìm thấy giảng viên phù hợp với bộ lọc"
+                : "Chưa có giảng viên nào trong hệ thống"}
+            </p>
           </div>
         ) : (
-          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-12 text-center">
-            <FaChalkboardTeacher className="text-6xl text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-300 mb-2">Chưa có giảng viên nào</h3>
-            <p className="text-gray-400 mb-6">Thêm giảng viên đầu tiên để bắt đầu</p>
-            <button
-              onClick={() => router.push('/dashboard/dip-issuer/delegates/add')}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-6 py-3 rounded-xl font-semibold transition"
-            >
-              <FaPlus className="inline mr-2" />
-              Thêm giảng viên
-            </button>
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-white/5 border-b border-white/10">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                      STT
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                      Mã GV
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                      Họ và tên
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                      Khoa
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                      Email
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                      Giới tính
+                    </th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-300">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredDelegates.map((delegate, index) => (
+                    <tr
+                      key={delegate.id}
+                      className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                    >
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        {index + 1}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-purple-400">
+                        {delegate.id}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-white">
+                        {delegate.name}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        {delegate.faculty}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        {delegate.email}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs ${
+                            delegate.gender === "MALE"
+                              ? "bg-blue-500/20 text-blue-300"
+                              : "bg-pink-500/20 text-pink-300"
+                          }`}
+                        >
+                          {delegate.gender === "MALE" ? "Nam" : "Nữ"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleViewDetail(delegate)}
+                            className="p-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded-lg transition"
+                            title="Xem chi tiết"
+                          >
+                            <FaEye />
+                          </button>
+                          <button
+                            onClick={() =>
+                              router.push(
+                                `/dashboard/dip-issuer/delegates/edit/${delegate.id}`
+                              )
+                            }
+                            className="p-2 bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 rounded-lg transition"
+                            title="Chỉnh sửa"
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(delegate)}
+                            className="p-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition"
+                            title="Xóa"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Modal chi tiết */}
-      {selectedDelegate && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
-          <div className="bg-[#1f2227] text-white rounded-xl shadow-2xl max-w-md w-full p-6 relative border border-purple-500/30">
-            <button
-              onClick={() => setSelectedDelegate(null)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl transition"
-            >
-              &times;
-            </button>
-            
-            <h3 className="text-2xl font-bold mb-4 text-purple-400 flex items-center gap-2">
-              <FaChalkboardTeacher />
-              Chi tiết giảng viên
-            </h3>
-            
-            <div className="space-y-3">
-              <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-sm text-gray-400">Mã giảng viên</p>
-                <p className="font-mono text-purple-300 font-semibold">{selectedDelegate.id}</p>
+      {/* Detail Modal */}
+      {showDetailModal && selectedDelegate && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
+              <h2 className="text-2xl font-bold text-white">
+                Chi tiết giảng viên
+              </h2>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="p-2 hover:bg-white/10 rounded-lg transition"
+              >
+                <FaTimes className="text-white text-xl" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-gray-400">Mã giảng viên</label>
+                  <p className="text-white font-semibold text-lg">
+                    {selectedDelegate.id}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400">Họ và tên</label>
+                  <p className="text-white font-semibold text-lg">
+                    {selectedDelegate.name}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400">Ngày sinh</label>
+                  <p className="text-white">
+                    {formatDate(selectedDelegate.dayOfBirth)}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400">Giới tính</label>
+                  <p className="text-white">
+                    {selectedDelegate.gender === "MALE" ? "Nam" : "Nữ"}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400">Email</label>
+                  <p className="text-white">{selectedDelegate.email}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-400">Khoa</label>
+                  <p className="text-white">{selectedDelegate.faculty}</p>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-sm text-gray-400">Địa chỉ ví</label>
+                  <p className="text-white font-mono text-sm break-all bg-white/5 p-3 rounded-lg">
+                    {selectedDelegate.addressWallet || "Chưa có"}
+                  </p>
+                </div>
               </div>
 
-              <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-sm text-gray-400">Họ và tên</p>
-                <p className="text-white font-semibold">{selectedDelegate.name}</p>
+              <div className="flex gap-3 pt-4 border-t border-white/10">
+                <button
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    router.push(
+                      `/dashboard/dip-issuer/delegates/edit/${selectedDelegate.id}`
+                    );
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 px-6 py-3 rounded-xl font-semibold transition"
+                >
+                  <FaEdit />
+                  Chỉnh sửa
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    handleDeleteClick(selectedDelegate);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 px-6 py-3 rounded-xl font-semibold transition"
+                >
+                  <FaTrash />
+                  Xóa giảng viên
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && delegateToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-red-500/30 rounded-2xl max-w-md w-full shadow-2xl animate-scale-in">
+            <div className="p-6">
+              {/* Icon Warning */}
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-500/20 mb-4">
+                <FaTrash className="h-8 w-8 text-red-500" />
               </div>
 
-              <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-sm text-gray-400">Khoa</p>
-                <p className="text-white">{selectedDelegate.faculty}</p>
-              </div>
+              {/* Title */}
+              <h3 className="text-2xl font-bold text-center text-white mb-2">
+                Xác nhận xóa giảng viên
+              </h3>
 
-              <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-sm text-gray-400">Email</p>
-                <p className="text-blue-300">{selectedDelegate.email}</p>
-              </div>
+              {/* Message */}
+              <p className="text-center text-gray-300 mb-6">
+                Bạn có chắc chắn muốn xóa giảng viên{" "}
+                <span className="font-semibold text-purple-400">
+                  {delegateToDelete.name}
+                </span>{" "}
+                (Mã: {delegateToDelete.id})?
+              </p>
 
-              <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-sm text-gray-400">Giới tính</p>
-                <p className="text-white">{selectedDelegate.gender === 'MALE' ? 'Nam' : 'Nữ'}</p>
-              </div>
-
-              <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-sm text-gray-400">Ngày sinh</p>
-                <p className="text-white">
-                  {selectedDelegate.dayOfBirth 
-                    ? new Date(selectedDelegate.dayOfBirth).toLocaleDateString('vi-VN')
-                    : 'Không có thông tin'}
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-6">
+                <p className="text-yellow-400 text-sm text-center">
+                  ⚠️ Hành động này không thể hoàn tác!
                 </p>
               </div>
 
-              <div className="bg-white/5 rounded-lg p-3">
-                <p className="text-sm text-gray-400">Địa chỉ ví</p>
-                <p className="font-mono text-green-300 text-sm break-all">{selectedDelegate.addressWallet}</p>
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={cancelDelete}
+                  className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-semibold transition"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white rounded-xl font-semibold transition shadow-lg"
+                >
+                  Xóa
+                </button>
               </div>
-            </div>
-            
-            <div className="mt-6 text-right">
-              <button
-                onClick={() => setSelectedDelegate(null)}
-                className="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg transition"
-              >
-                Đóng
-              </button>
             </div>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }
