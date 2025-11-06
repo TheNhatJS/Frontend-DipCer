@@ -1,5 +1,5 @@
 {
-  "address": "0x715AD6eFB04d099518F563023148f47441884493",
+  "address": "0x43DAdbAd93B07C66391822bd75D37EbBc64535Ba",
   "abi": [
     {
       "inputs": [
@@ -377,25 +377,6 @@
           "type": "string"
         }
       ],
-      "name": "IssuerApproved",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "issuer",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "string",
-          "name": "institutionCode",
-          "type": "string"
-        }
-      ],
       "name": "IssuerRevoked",
       "type": "event"
     },
@@ -575,6 +556,58 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address[]",
+          "name": "_studentAddresses",
+          "type": "address[]"
+        },
+        {
+          "internalType": "string",
+          "name": "_institutionCode",
+          "type": "string"
+        },
+        {
+          "internalType": "string[]",
+          "name": "_serialNumbers",
+          "type": "string[]"
+        },
+        {
+          "internalType": "string[]",
+          "name": "_tokenURIs",
+          "type": "string[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "_issueDates",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "batchIssueDiploma",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "tokenIds",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "_tokenIds",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "batchRevokeAndBurnDiploma",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {

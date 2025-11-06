@@ -11,13 +11,6 @@ import {
 } from "react";
 import { toast } from "sonner";
 
-// Định nghĩa kiểu dữ liệu cho window.ethereum
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
-
 interface WalletContextType {
   address: string | null;
   connectWallet: () => Promise<void>;

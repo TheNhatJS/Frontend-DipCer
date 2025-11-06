@@ -800,7 +800,7 @@ export default function DiplomasPage() {
           </div>
         )}
 
-        {/* {showDeleteModal && selectedDip && (
+        {showDeleteModal && selectedDip && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-red-500/30 rounded-lg max-w-md w-full p-6 shadow-2xl">
             <h2 className="text-xl font-bold mb-4 text-red-400">
@@ -840,7 +840,7 @@ export default function DiplomasPage() {
             </div>
           </div>
         </div>
-      )} */}
+      )}
       </div>
     </div>
   );

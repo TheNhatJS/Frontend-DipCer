@@ -14,6 +14,7 @@ import StepComplete from "@/components/Step-COMPLETE";
 import ResumePrompt from "@/components/ResumePrompt";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { approveIssuerOnChain } from "@/lib/contract";
+import axiosInstance from "@/lib/axios";
 
 type RegistrationStep =
   | "INITIATE"
@@ -128,7 +129,9 @@ export default function RegisterIssuerPage() {
       // Navigate to correct step based on response
       if (data.step === "EMAIL") {
         setStep("EMAIL_SENT");
-        setSuccessMessage("Email xác thực đã được gửi lại! Vui lòng kiểm tra hộp thư.");
+        setSuccessMessage(
+          "Email xác thực đã được gửi lại! Vui lòng kiểm tra hộp thư."
+        );
       } else if (data.step === "DNS") {
         setDnsRecordName(data.dnsRecordName);
         setDnsToken(data.dnsToken);
@@ -164,30 +167,36 @@ export default function RegisterIssuerPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(
-        "http://localhost:8080/api/dip-issuer/register/initiate",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            code: code.toUpperCase(),
-            schoolName,
-            email,
-            addressWallet,
-          }),
-        }
-      );
+      // const res = await fetch(
+      //   "http://localhost:8080/api/dip-issuer/register/initiate",
+      //   {
+      //     method: "POST",
+      //     headers: { "Content-Type": "application/json" },
+      //     body: JSON.stringify({
+      //       code: code.toUpperCase(),
+      //       schoolName,
+      //       email,
+      //       addressWallet,
+      //     }),
+      //   }
+      // );
 
-      const data = await res.json();
+      const res = await axiosInstance.post("/dip-issuer/register/initiate", {
+        code: code.toUpperCase(),
+        schoolName,
+        email,
+        addressWallet,
+      });
 
-      if (!res.ok) {
-        setError(data.message || "Đăng ký thất bại");
+      // Kiểm tra mã trạng thái HTTP
+      if (res.status !== 200) {
+        setError(res.data.message || "Đăng ký thất bại");
         return;
       }
 
       // ✅ Save email to localStorage for resume
       localStorage.setItem("registration_email", email);
-
+      const data = res.data;
       setVerificationId(data.verificationId);
       setSuccessMessage(data.message);
       setStep("EMAIL_SENT");
@@ -231,6 +240,47 @@ export default function RegisterIssuerPage() {
   };
 
   // ========== STEP 3: VERIFY DNS RECORD ==========
+  // Auto-check DNS status when entering DNS_SETUP step
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (step === "DNS_SETUP" && verificationId) {
+      // Kiểm tra DNS ngay lập tức khi vào step này
+      checkDnsStatus();
+
+      // Sau đó kiểm tra mỗi 30 giây
+      intervalId = setInterval(() => {
+        checkDnsStatus();
+      }, 30000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [step, verificationId]);
+
+  const checkDnsStatus = async () => {
+    if (!verificationId || isDnsChecking) return;
+
+    try {
+      const res = await fetch(
+        `http://localhost:8080/api/dip-issuer/register/dns-status?verificationId=${verificationId}`
+      );
+
+      const data = await res.json();
+
+      if (res.ok && data.status === "VERIFIED") {
+        // DNS đã được xác thực (có thể bởi CRON job)
+        setSuccessMessage(data.message || "DNS đã được xác thực thành công!");
+        setStep("DNS_VERIFIED");
+      }
+      // Nếu vẫn PENDING, không làm gì cả, tiếp tục đợi
+    } catch (err) {
+      // Im lặng, không hiển thị lỗi cho auto-check
+      console.log("Auto DNS check failed:", err);
+    }
+  };
+
   const handleVerifyDns = async () => {
     if (!verificationId) return;
 
@@ -295,14 +345,14 @@ export default function RegisterIssuerPage() {
     setLoading(true);
 
     try {
+      // ========== BƯỚC 1: LẤY THÔNG TIN TỪ BACKEND ==========
       const res = await fetch(
-        "http://localhost:8080/api/dip-issuer/register/complete",
+        "http://localhost:8080/api/dip-issuer/register/prepare-complete",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             verificationId,
-            password,
           }),
         }
       );
@@ -310,58 +360,85 @@ export default function RegisterIssuerPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message || "Hoàn tất đăng ký thất bại");
+        setError(data.message || "Không thể lấy thông tin đăng ký");
+        setLoading(false);
         return;
       }
 
-      setSuccessMessage(
-        "🎉 Đăng ký thành công! Đang xác thực trên blockchain..."
-      );
-      setStep("COMPLETE");
       setLoading(false);
+      setStep("COMPLETE");
+      setSuccessMessage("Đang xác thực trên blockchain...");
 
-      // ✅ Clear saved email after successful registration
-      localStorage.removeItem("registration_email");
-
-      // ========== APPROVE ISSUER ON BLOCKCHAIN ==========
+      // ========== BƯỚC 2: APPROVE ISSUER ON BLOCKCHAIN ==========
       setIsApprovingBlockchain(true);
       setBlockchainError("");
 
       const blockchainResult = await approveIssuerOnChain(
-        data.newIssuer.addressWallet,
-        data.newIssuer.code,
+        data.addressWallet,
+        data.code,
         data.timestamp,
         data.signature
       );
 
-      if (blockchainResult.success) {
-        setBlockchainApproved(true);
-        setTxHash(blockchainResult.txHash || "");
-        setSuccessMessage(
-          "✅ Đăng ký thành công và đã xác thực trên blockchain!"
-        );
-
-        // Chuyển hướng sau 5 giây
-        setTimeout(() => {
-          router.push("/auth/login");
-        }, 5000);
-      } else {
+      if (!blockchainResult.success) {
+        // Blockchain approval thất bại
         setBlockchainError(
           blockchainResult.error ||
-            "Không thể xác thực trên blockchain. Bạn có thể xác thực sau trong trang quản lý."
+            "Không thể xác thực trên blockchain. Vui lòng thử lại."
         );
-
-        // Vẫn chuyển hướng nhưng sau 8 giây để user đọc thông báo
-        setTimeout(() => {
-          router.push("/auth/login");
-        }, 8000);
+        setIsApprovingBlockchain(false);
+        setStep("DNS_VERIFIED"); // Quay lại bước trước
+        setError(
+          blockchainResult.error ||
+            "Xác thực blockchain thất bại. Vui lòng kiểm tra và thử lại."
+        );
+        return;
       }
 
+      // ========== BƯỚC 3: HOÀN TẤT ĐĂNG KÝ SAU KHI BLOCKCHAIN THÀNH CÔNG ==========
+      setBlockchainApproved(true);
+      setTxHash(blockchainResult.txHash || "");
+      setSuccessMessage("✅ Xác thực blockchain thành công! Đang hoàn tất đăng ký...");
+
+      const completeRes = await fetch(
+        "http://localhost:8080/api/dip-issuer/register/complete",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            verificationId,
+            password,
+            txHash: blockchainResult.txHash,
+          }),
+        }
+      );
+
+      const completeData = await completeRes.json();
+
+      if (!completeRes.ok) {
+        setError(completeData.message || "Hoàn tất đăng ký thất bại");
+        setIsApprovingBlockchain(false);
+        return;
+      }
+
+      setSuccessMessage(
+        "✅ Đăng ký thành công và đã xác thực trên blockchain!"
+      );
+
+      // ✅ Clear saved email after successful registration
+      localStorage.removeItem("registration_email");
+
       setIsApprovingBlockchain(false);
+
+      // Chuyển hướng sau 3 giây
+      setTimeout(() => {
+        router.push("/auth/login");
+      }, 3000);
     } catch (err) {
       console.error("Lỗi khi hoàn tất đăng ký:", err);
       setError("Đã xảy ra lỗi. Vui lòng thử lại sau.");
       setLoading(false);
+      setIsApprovingBlockchain(false);
     }
   };
 

@@ -192,74 +192,85 @@ export async function connectMetaMask(): Promise<{
 // ==================== DIPLOMA VERIFICATION ====================
 
 /**
- * Xác thực văn bằng với blockchain
- * @param params - Thông tin văn bằng cần xác thực
- * @returns Kết quả xác thực
+ * Xác thực văn bằng với blockchain bằng hàm verifyDiploma của smart contract
+ * @param params - Thông tin văn bằng từ database
+ * @returns Kết quả xác thực (true nếu hợp lệ, false nếu bị thay đổi)
  */
 export async function verifyDiplomaWithBlockchain(
-  params: VerifyDiplomaParams
-): Promise<VerifyResult> {
+  params: {
+    tokenId: number;
+    institutionCode: string;
+    serialNumber: string;
+    studentAddress: string;
+    issuerAddress: string;
+    issueDate: number; // Unix timestamp in seconds
+    tokenURI: string;
+  }
+): Promise<{
+  success: boolean;
+  message: string;
+  isValid?: boolean;
+}> {
   try {
-    const { tokenId, serialNumber, studentAddress } = params;
+    const { tokenId, institutionCode, serialNumber, studentAddress, issuerAddress, issueDate, tokenURI } = params;
+
+    // Validate parameters
+    if (!tokenId || isNaN(tokenId)) {
+      throw new Error("Invalid tokenId");
+    }
+    if (!institutionCode || !serialNumber || !studentAddress || !issuerAddress || !tokenURI) {
+      throw new Error("Missing required parameters");
+    }
+    if (isNaN(issueDate) || issueDate < 0) {
+      throw new Error(`Invalid issueDate: ${issueDate}`);
+    }
 
     // Sử dụng helper để lấy contract instance
     const { contract } = await getContractInstance();
 
-    // Lấy thông tin văn bằng từ blockchain
-    let onChainDiploma;
-    try {
-      onChainDiploma = await contract.getDiploma(tokenId);
-    } catch (error: any) {
-      if (error.message?.includes("not valid or not exist")) {
-        return {
-          success: false,
-          message: "Văn bằng không tồn tại hoặc đã bị thu hồi trên blockchain.",
-        };
-      }
-      throw error;
-    }
+    console.log("🔍 Đang xác thực văn bằng với blockchain...");
+    console.log("Parameters:", {
+      tokenId,
+      institutionCode,
+      serialNumber,
+      studentAddress,
+      issuerAddress,
+      issueDate,
+      issueDateType: typeof issueDate,
+      tokenURI
+    });
 
-    // 4. So sánh dữ liệu
-    const isSerialMatch = onChainDiploma.serialNumber === serialNumber;
-    const isStudentMatch =
-      onChainDiploma.student.toLowerCase() === studentAddress.toLowerCase();
-    const isValid = onChainDiploma.isValid === true;
+    // Gọi hàm verifyDiploma từ smart contract
+    const isValid = await contract.verifyDiploma(
+      tokenId,
+      institutionCode,
+      serialNumber,
+      studentAddress,
+      issuerAddress,
+      issueDate,
+      tokenURI
+    );
 
-    // 5. Kiểm tra tất cả điều kiện
-    if (!isSerialMatch) {
-      return {
-        success: false,
-        message: `Số serial không khớp. Off-chain: ${serialNumber}, On-chain: ${onChainDiploma.serialNumber}`,
-        onChainData: onChainDiploma,
-      };
-    }
-
-    if (!isStudentMatch) {
-      return {
-        success: false,
-        message: `Địa chỉ sinh viên không khớp. Off-chain: ${studentAddress}, On-chain: ${onChainDiploma.student}`,
-        onChainData: onChainDiploma,
-      };
-    }
+    console.log("✅ Kết quả xác thực:", isValid);
 
     if (!isValid) {
       return {
         success: false,
-        message: "Văn bằng đã bị thu hồi hoặc không hợp lệ trên blockchain.",
-        onChainData: onChainDiploma,
+        isValid: false,
+        message: "⚠️ Văn bằng đã bị thay đổi hoặc không khớp với dữ liệu trên blockchain!",
       };
     }
 
-    // 6. Tất cả đều khớp
     return {
       success: true,
-      message: "Văn bằng hợp lệ và khớp với dữ liệu blockchain.",
-      onChainData: onChainDiploma,
+      isValid: true,
+      message: "✅ Văn bằng hợp lệ và khớp với dữ liệu blockchain.",
     };
   } catch (error: any) {
     console.error("Error verifying diploma:", error);
     return {
       success: false,
+      isValid: false,
       message: error.message || "Lỗi không xác định khi xác thực văn bằng.",
     };
   }
@@ -416,6 +427,102 @@ export async function checkIssuerAuthorization(
   } catch (error: any) {
     console.error("Error checking issuer authorization:", error);
     throw new Error(`Lỗi kiểm tra quyền: ${error.message}`);
+  }
+}
+
+/**
+ * Batch mint nhiều văn bằng cùng lúc
+ * @param batchData - Danh sách thông tin văn bằng cần mint
+ * @param institutionCode - Mã trường (ví dụ: "HUST")
+ * @returns Object chứa kết quả batch mint và danh sách tokenIds
+ */
+export async function batchMintDiplomas(
+  batchData: Array<{
+    studentAddress: string;
+    serialNumber: string;
+    tokenURI: string;
+    issueDate: number;
+  }>,
+  institutionCode: string
+): Promise<{
+  success: boolean;
+  tokenIds?: number[];
+  txHash?: string;
+  error?: string;
+}> {
+  try {
+    if (batchData.length === 0) {
+      return {
+        success: false,
+        error: "Không có văn bằng nào để mint",
+      };
+    }
+
+    // Get contract instance
+    const { contract, signer } = await getContractInstance();
+
+    // Get current address
+    const currentAddress = await signer.getAddress();
+    
+    // Prepare batch data
+    const studentAddresses = batchData.map(d => d.studentAddress);
+    const serialNumbers = batchData.map(d => d.serialNumber);
+    const tokenURIs = batchData.map(d => d.tokenURI);
+    const issueDates = batchData.map(d => d.issueDate);
+
+    console.log("📦 Batch minting", batchData.length, "diplomas...");
+    console.log("🏢 Institution Code:", institutionCode);
+
+    // Call batch mint function on contract
+    // Note: Function name is batchIssueDiploma (singular)
+    const tx = await contract.batchIssueDiploma(
+      studentAddresses,
+      institutionCode,
+      serialNumbers,
+      tokenURIs,
+      issueDates
+    );
+
+    console.log("📝 Batch transaction sent:", tx.hash);
+
+    // Wait for confirmation
+    const receipt = await tx.wait();
+    console.log("✅ Batch transaction confirmed:", receipt.hash);
+
+    // Extract tokenIds from events
+    const tokenIds: number[] = [];
+    
+    for (const log of receipt.logs) {
+      try {
+        const parsed = contract.interface.parseLog(log);
+        if (parsed?.name === "DiplomaIssued") {
+          tokenIds.push(Number(parsed.args.tokenId));
+        }
+      } catch {
+        // Skip logs that can't be parsed
+        continue;
+      }
+    }
+
+    if (tokenIds.length !== batchData.length) {
+      console.warn(
+        `⚠️ Expected ${batchData.length} tokenIds but got ${tokenIds.length}`
+      );
+    }
+
+    console.log("🎓 Batch minted successfully! TokenIDs:", tokenIds);
+
+    return {
+      success: true,
+      tokenIds,
+      txHash: receipt.hash,
+    };
+  } catch (error: any) {
+    console.error("❌ Error batch minting diplomas:", error);
+    return {
+      success: false,
+      error: error.message || "Lỗi không xác định khi batch mint",
+    };
   }
 }
 

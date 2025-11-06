@@ -19,16 +19,10 @@ const links = [
     description: 'Dashboard và thống kê'
   },
   { 
-    name: 'Sinh viên', 
-    href: '/dashboard/dip-issuer/students', 
-    icon: HiAcademicCap,
-    description: 'Quản lý sinh viên'
-  },
-  { 
-    name: 'Giảng viên', 
+    name: 'Chuyên viên', 
     href: '/dashboard/dip-issuer/delegates', 
     icon: HiUsers,
-    description: 'Quản lý giảng viên'
+    description: 'Quản lý chuyên viên'
   },
   { 
     name: 'Văn bằng', 
