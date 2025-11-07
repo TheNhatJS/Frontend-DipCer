@@ -22,9 +22,9 @@ export const updateAxiosSession = (session: any) => {
     hasRefreshToken: !!session?.refresh_token,
     accessTokenPreview: session?.access_token?.substring(0, 20) + "...",
   });
-  
+
   cachedSession = session;
-  
+
   console.log("✅ [updateAxiosSession] Cached session updated successfully");
 };
 
@@ -91,18 +91,27 @@ axiosInstance.interceptors.response.use(
 
     // Nếu lỗi 401 và chưa retry
     if (error.response?.status === 401 && !originalRequest._retry) {
-      console.log("🔴 [Response Interceptor] 401 Unauthorized - Token expired or invalid");
+      console.log(
+        "🔴 [Response Interceptor] 401 Unauthorized - Token expired or invalid"
+      );
 
       if (isRefreshing) {
-        console.log("⏳ [Response Interceptor] Already refreshing - Adding to queue");
-        console.log("⏳ [Response Interceptor] Queue size:", failedQueue.length);
-        
+        console.log(
+          "⏳ [Response Interceptor] Already refreshing - Adding to queue"
+        );
+        console.log(
+          "⏳ [Response Interceptor] Queue size:",
+          failedQueue.length
+        );
+
         // Nếu đang refresh, đợi trong queue
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
-            console.log("🟢 [Response Interceptor] Queue resolved - Retrying with new token");
+            console.log(
+              "🟢 [Response Interceptor] Queue resolved - Retrying with new token"
+            );
             originalRequest.headers.Authorization = `Bearer ${token}`;
             return axiosInstance(originalRequest);
           })
@@ -119,13 +128,17 @@ axiosInstance.interceptors.response.use(
       try {
         // ✅ Sử dụng cached session
         if (!cachedSession?.refresh_token) {
-          console.error("❌ [Response Interceptor] No refresh token in cached session");
+          console.error(
+            "❌ [Response Interceptor] No refresh token in cached session"
+          );
           throw new Error("No refresh token available");
         }
 
         console.log("🔄 [Response Interceptor] Calling /auth/refresh endpoint");
-        console.log("🔄 [Response Interceptor] Refresh token preview:", 
-          cachedSession.refresh_token.substring(0, 20) + "...");
+        console.log(
+          "🔄 [Response Interceptor] Refresh token preview:",
+          cachedSession.refresh_token.substring(0, 20) + "..."
+        );
 
         // Thử refresh token
         const response = await axios.post(
@@ -136,34 +149,24 @@ axiosInstance.interceptors.response.use(
 
         if (response.data?.access_token) {
           const newAccessToken = response.data.access_token;
-
-          console.log("✅ [Response Interceptor] Token refreshed successfully!");
-          console.log("✅ [Response Interceptor] New token preview:", 
-            newAccessToken.substring(0, 20) + "...");
-
           // ✅ Update cached session
           cachedSession = {
             ...cachedSession,
             access_token: newAccessToken,
           };
-          console.log("✅ [Response Interceptor] Updated cachedSession with new token");
 
           // Cập nhật token trong request hiện tại
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          console.log("✅ [Response Interceptor] Updated original request header");
-
-          // Xử lý các request đang chờ
-          console.log("🟢 [Response Interceptor] Processing queue:", failedQueue.length, "requests");
           processQueue(null, newAccessToken);
           isRefreshing = false;
 
           // Lưu token mới vào localStorage để update session
           if (typeof window !== "undefined") {
             localStorage.setItem("new_access_token", newAccessToken);
-            console.log("💾 [Response Interceptor] Saved new token to localStorage");
-            
             // Trigger custom event để components có thể update session
-            console.log("📡 [Response Interceptor] Dispatching 'token-refreshed' event");
+            console.log(
+              "📡 [Response Interceptor] Dispatching 'token-refreshed' event"
+            );
             window.dispatchEvent(
               new CustomEvent("token-refreshed", {
                 detail: { access_token: newAccessToken },
@@ -172,22 +175,18 @@ axiosInstance.interceptors.response.use(
           }
 
           // Thử lại request ban đầu với token mới
-          console.log("🔄 [Response Interceptor] Retrying original request with new token");
+          console.log(
+            "🔄 [Response Interceptor] Retrying original request with new token"
+          );
           return axiosInstance(originalRequest);
         }
 
         // Refresh token thất bại - đăng xuất
         throw new Error("No access token in refresh response");
       } catch (refreshError: any) {
-        console.error("❌ [Response Interceptor] Token refresh FAILED:", refreshError.message);
-        console.error("❌ [Response Interceptor] Error details:", refreshError.response?.data);
-        
-        console.log("🔴 [Response Interceptor] Processing queue with error");
         processQueue(refreshError, null);
         isRefreshing = false;
         cachedSession = null;
-
-        console.log("🚪 [Response Interceptor] Logging out user");
         toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
         await signOut({ callbackUrl: "/auth/login" });
         return Promise.reject(refreshError);

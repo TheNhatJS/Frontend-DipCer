@@ -150,6 +150,79 @@ export function isMetaMaskInstalled(): boolean {
 }
 
 /**
+ * Chuyển quyền issuer sang địa chỉ ví mới
+ * @param newIssuerAddress - Địa chỉ ví mới sẽ trở thành issuer
+ * @returns Kết quả chuyển đổi
+ */
+export async function transferIssuerRole(
+  newIssuerAddress: string
+): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  try {
+    // Kiểm tra địa chỉ ví hợp lệ
+    if (!newIssuerAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+      return {
+        success: false,
+        error: "Địa chỉ ví không hợp lệ!",
+      };
+    }
+
+    // Sử dụng helper để lấy contract instance
+    const { contract, signer } = await getContractInstance();
+    const currentAddress = await signer.getAddress();
+
+    // Kiểm tra xem địa chỉ hiện tại có phải issuer không
+    const isIssuer = await contract.isApprovedIssuer(currentAddress);
+    if (!isIssuer) {
+      return {
+        success: false,
+        error: "Địa chỉ hiện tại không phải là issuer!",
+      };
+    }
+
+    // Kiểm tra địa chỉ mới chưa được approve
+    const newIsIssuer = await contract.isApprovedIssuer(newIssuerAddress);
+    if (newIsIssuer) {
+      return {
+        success: false,
+        error: "Địa chỉ mới đã là issuer của một trường khác!",
+      };
+    }
+
+    console.log("🔄 Đang chuyển quyền issuer...");
+    
+    // Gọi hàm transferIssuerRole trên smart contract
+    const tx = await contract.transferIssuerRole(newIssuerAddress);
+    
+    console.log("⏳ Đang chờ transaction được confirm...", tx.hash);
+
+    // Chờ transaction được confirm
+    const receipt = await tx.wait();
+
+    console.log("✅ Chuyển quyền thành công!", receipt.hash);
+
+    return {
+      success: true,
+      txHash: receipt.hash,
+    };
+  } catch (error: any) {
+    console.error("❌ Lỗi khi chuyển quyền issuer:", error);
+
+    let errorMessage = "Có lỗi xảy ra khi chuyển quyền issuer.";
+
+    if (error.code === "ACTION_REJECTED") {
+      errorMessage = "Bạn đã từ chối giao dịch.";
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+/**
  * Kết nối MetaMask
  */
 export async function connectMetaMask(): Promise<{
@@ -609,6 +682,181 @@ export async function issueDiplomaOnBlockchain(params: {
     return {
       success: false,
       error: error.message || "Lỗi không xác định khi mint NFT",
+    };
+  }
+}
+
+// ==================== DELEGATE MANAGEMENT ====================
+
+/**
+ * Approve delegate on blockchain - cấp quyền cho một delegate
+ * @param institutionCode - Mã trường (VD: HUST, TEST)
+ * @param delegateAddress - Địa chỉ ví của delegate
+ * @returns Object chứa kết quả approve
+ */
+export async function approveDelegateOnChain(
+  institutionCode: string,
+  delegateAddress: string
+): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  try {
+    console.log("🔄 Approving delegate on blockchain...");
+    console.log("Institution Code:", institutionCode);
+    console.log("Delegate Address:", delegateAddress);
+
+    // Sử dụng helper để lấy contract instance
+    const { contract } = await getContractInstance();
+
+    // Gọi hàm approveDelegate
+    console.log("🔄 Đang gửi transaction approve delegate...");
+    const tx = await contract.approveDelegate(
+      institutionCode,
+      delegateAddress
+    );
+
+    console.log("⏳ Đang chờ transaction được confirm...", tx.hash);
+
+    // Chờ transaction được confirm
+    const receipt = await tx.wait();
+
+    console.log("✅ Delegate approved successfully!", receipt.hash);
+
+    return {
+      success: true,
+      txHash: receipt.hash,
+    };
+  } catch (error: any) {
+    console.error("❌ Lỗi khi approve delegate on-chain:", error);
+
+    let errorMessage = "Có lỗi xảy ra khi approve delegate trên blockchain.";
+
+    if (error.code === "ACTION_REJECTED") {
+      errorMessage = "Bạn đã từ chối giao dịch.";
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+/**
+ * Batch approve delegates on blockchain - cấp quyền cho nhiều delegate cùng lúc
+ * @param institutionCode - Mã trường (VD: HUST, TEST)
+ * @param delegateAddresses - Mảng địa chỉ ví của các delegate
+ * @returns Object chứa kết quả approve
+ */
+export async function batchApproveDelegatesOnChain(
+  institutionCode: string,
+  delegateAddresses: string[]
+): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  try {
+    console.log("🔄 Batch approving delegates on blockchain...");
+    console.log("Institution Code:", institutionCode);
+    console.log("Delegate Addresses:", delegateAddresses);
+
+    if (!delegateAddresses || delegateAddresses.length === 0) {
+      return {
+        success: false,
+        error: "Danh sách delegate rỗng",
+      };
+    }
+
+    // Sử dụng helper để lấy contract instance
+    const { contract } = await getContractInstance();
+
+    // Gọi hàm batchApproveDelegate
+    console.log("🔄 Đang gửi transaction batch approve delegates...");
+    const tx = await contract.batchApproveDelegate(
+      institutionCode,
+      delegateAddresses
+    );
+
+    console.log("⏳ Đang chờ transaction được confirm...", tx.hash);
+
+    // Chờ transaction được confirm
+    const receipt = await tx.wait();
+
+    console.log(
+      `✅ ${delegateAddresses.length} delegates approved successfully!`,
+      receipt.hash
+    );
+
+    return {
+      success: true,
+      txHash: receipt.hash,
+    };
+  } catch (error: any) {
+    console.error("❌ Lỗi khi batch approve delegates on-chain:", error);
+
+    let errorMessage =
+      "Có lỗi xảy ra khi batch approve delegates trên blockchain.";
+
+    if (error.code === "ACTION_REJECTED") {
+      errorMessage = "Bạn đã từ chối giao dịch.";
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+/**
+ * Revoke delegate on blockchain - thu hồi quyền cấp phát của delegate
+ * @param institutionCode - Mã trường (VD: HUST, TEST)
+ * @param delegateAddress - Địa chỉ ví của delegate cần thu hồi quyền
+ * @returns Object chứa kết quả revoke
+ */
+export async function revokeDelegateOnChain(
+  institutionCode: string,
+  delegateAddress: string
+): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  try {
+    console.log("🔄 Revoking delegate on blockchain...");
+    console.log("Institution Code:", institutionCode);
+    console.log("Delegate Address:", delegateAddress);
+
+    // Sử dụng helper để lấy contract instance
+    const { contract } = await getContractInstance();
+
+    // Gọi hàm revokeDelegate
+    console.log("🔄 Đang gửi transaction revoke delegate...");
+    const tx = await contract.revokeDelegate(
+      institutionCode,
+      delegateAddress
+    );
+
+    console.log("⏳ Đang chờ transaction được confirm...", tx.hash);
+
+    // Chờ transaction được confirm
+    const receipt = await tx.wait();
+
+    console.log("✅ Delegate revoked successfully!", receipt.hash);
+
+    return {
+      success: true,
+      txHash: receipt.hash,
+    };
+  } catch (error: any) {
+    console.error("❌ Lỗi khi revoke delegate on-chain:", error);
+
+    let errorMessage = "Có lỗi xảy ra khi thu hồi quyền delegate trên blockchain.";
+
+    if (error.code === "ACTION_REJECTED") {
+      errorMessage = "Bạn đã từ chối giao dịch.";
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    return {
+      success: false,
+      error: errorMessage,
     };
   }
 }

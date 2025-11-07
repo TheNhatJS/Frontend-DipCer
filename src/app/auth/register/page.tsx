@@ -14,7 +14,6 @@ import StepComplete from "@/components/Step-COMPLETE";
 import ResumePrompt from "@/components/ResumePrompt";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { approveIssuerOnChain } from "@/lib/contract";
-import axiosInstance from "@/lib/axios";
 
 type RegistrationStep =
   | "INITIATE"
@@ -167,36 +166,29 @@ export default function RegisterIssuerPage() {
     setLoading(true);
 
     try {
-      // const res = await fetch(
-      //   "http://localhost:8080/api/dip-issuer/register/initiate",
-      //   {
-      //     method: "POST",
-      //     headers: { "Content-Type": "application/json" },
-      //     body: JSON.stringify({
-      //       code: code.toUpperCase(),
-      //       schoolName,
-      //       email,
-      //       addressWallet,
-      //     }),
-      //   }
-      // );
+      const res = await fetch(
+        "http://localhost:8080/api/dip-issuer/register/initiate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: code.toUpperCase(),
+            schoolName,
+            email,
+            addressWallet,
+          }),
+        }
+      );
 
-      const res = await axiosInstance.post("/dip-issuer/register/initiate", {
-        code: code.toUpperCase(),
-        schoolName,
-        email,
-        addressWallet,
-      });
+      const data = await res.json();
 
-      // Kiểm tra mã trạng thái HTTP
-      if (res.status !== 200) {
-        setError(res.data.message || "Đăng ký thất bại");
+      if (!res.ok) {
+        setError(data.message || "Đăng ký thất bại");
         return;
       }
 
       // ✅ Save email to localStorage for resume
       localStorage.setItem("registration_email", email);
-      const data = res.data;
       setVerificationId(data.verificationId);
       setSuccessMessage(data.message);
       setStep("EMAIL_SENT");

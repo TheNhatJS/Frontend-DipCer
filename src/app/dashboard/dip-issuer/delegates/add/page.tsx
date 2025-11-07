@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { toast, Toaster } from 'sonner'
 import { FaChalkboardTeacher, FaTrash, FaArrowLeft } from 'react-icons/fa'
 import axiosInstance from '@/lib/axios'
+import { useSession } from 'next-auth/react'
+import { approveDelegateOnChain, batchApproveDelegatesOnChain } from '@/lib/contract'
 
 type DelegateForm = {
   id: string
@@ -14,11 +16,11 @@ type DelegateForm = {
   dayOfBirth: string
   gender: 'MALE' | 'FEMALE'
   phone: string
-  faculty: string
 }
 
 export default function AddDelegatePage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'single' | 'batch'>('single')
   
@@ -31,7 +33,6 @@ export default function AddDelegatePage() {
     dayOfBirth: '',
     gender: 'MALE',
     phone: '',
-    faculty: ''
   })
 
   // Batch delegates
@@ -45,17 +46,68 @@ export default function AddDelegatePage() {
     setLoading(true)
 
     try {
-      // Dùng axios thay vì fetch
+      // Kiểm tra có institution code và wallet address trong session
+      if (!session?.user?.code || !session?.user?.address) {
+        toast.error('Không tìm thấy thông tin trường hoặc địa chỉ ví trong session')
+        setLoading(false)
+        return
+      }
+
+      // Bước 1: Kiểm tra địa chỉ ví hiện tại khớp với session
+      toast.info('🔍 Đang kiểm tra địa chỉ ví...')
+      const { getCurrentWalletAddress } = await import('@/lib/contract')
+      const currentWallet = await getCurrentWalletAddress()
+      
+      if (!currentWallet) {
+        toast.error('Không thể lấy địa chỉ ví. Vui lòng kết nối MetaMask')
+        setLoading(false)
+        return
+      }
+
+      // So sánh địa chỉ ví (case-insensitive)
+      if (currentWallet.toLowerCase() !== session.user.address.toLowerCase()) {
+        toast.error(
+          `Địa chỉ ví không khớp!\nVí hiện tại: ${currentWallet}\nVí trong hệ thống: ${session.user.address}\nVui lòng chuyển sang đúng ví trong MetaMask`,
+          { duration: 8000 }
+        )
+        setLoading(false)
+        return
+      }
+
+      toast.success('✅ Địa chỉ ví hợp lệ')
+
+      // Bước 2: Approve delegate trên blockchain TRƯỚC
+      toast.info('🔄 Đang cấp quyền trên blockchain...')
+      
+      const blockchainResult = await approveDelegateOnChain(
+        session.user.code,
+        delegate.address
+      )
+
+      if (!blockchainResult.success) {
+        toast.error(
+          `❌ Không thể cấp quyền trên blockchain: ${blockchainResult.error}`,
+          { duration: 7000 }
+        )
+        setLoading(false)
+        return
+      }
+
+      toast.success('✅ Cấp quyền trên blockchain thành công!')
+      console.log('Blockchain TX:', blockchainResult.txHash)
+
+      // Bước 3: Sau khi blockchain thành công, mới thêm vào database
+      toast.info('💾 Đang lưu vào database...')
       const { data } = await axiosInstance.post('/dip-delegate', [delegate])
 
-      console.log('Single submit response:', data)
+      console.log('Database response:', data)
 
       // Xử lý response - Backend trả về array của results
       if (Array.isArray(data)) {
-        const result = data[0] // Lấy kết quả đầu tiên
+        const result = data[0]
         
         if (result.status === 'success') {
-          toast.success('Thêm giảng viên thành công!')
+          toast.success('✅ Thêm giảng viên thành công!')
           
           // Reset form
           setDelegate({
@@ -65,34 +117,27 @@ export default function AddDelegatePage() {
             address: '',
             dayOfBirth: '',
             gender: 'MALE',
-            phone: '',
-            faculty: ''
+            phone: ''
           })
 
-          setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 1500)
+          setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 2000)
         } else {
-          // Hiển thị lỗi chi tiết từ backend
+          // Database fail nhưng blockchain đã thành công
           const errorMsg = result.error || 'Không thể thêm giảng viên'
           
-          // Parse error message để hiển thị user-friendly
-          if (errorMsg.includes('Unique constraint failed') && errorMsg.includes('email')) {
-            toast.error('Email này đã được sử dụng. Vui lòng chọn email khác.', { duration: 5000 })
-          } else if (errorMsg.includes('Unique constraint failed') && errorMsg.includes('schoolCode')) {
-            toast.error('Mã giảng viên này đã tồn tại. Vui lòng chọn mã khác.', { duration: 5000 })
-          } else {
-            toast.error(`Lỗi: ${errorMsg}`, { duration: 5000 })
-          }
+          toast.error(
+            `⚠️ Đã cấp quyền blockchain nhưng lưu database thất bại: ${errorMsg}`,
+            { duration: 8000 }
+          )
           
-          console.error('Failed:', result)
+          console.error('Database failed but blockchain succeeded:', result)
         }
       } else if (data.results && Array.isArray(data.results)) {
-        // Fallback cho format cũ
         const result = data.results[0]
         
         if (result.success) {
-          toast.success('Thêm giảng viên thành công!')
+          toast.success('✅ Thêm giảng viên thành công!')
           
-          // Reset form
           setDelegate({
             id: '',
             name: '',
@@ -101,19 +146,19 @@ export default function AddDelegatePage() {
             dayOfBirth: '',
             gender: 'MALE',
             phone: '',
-            faculty: ''
           })
 
-          setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 1500)
+          setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 2000)
         } else {
-          toast.error(`Không thể thêm giảng viên: ${result.error}`, { duration: 5000 })
-          console.error('Failed:', result)
+          toast.error(
+            `⚠️ Đã cấp quyền blockchain nhưng lưu database thất bại: ${result.error}`,
+            { duration: 8000 }
+          )
+          console.error('Database failed:', result)
         }
       } else {
-        // Legacy response hoặc success khác
-        toast.success('Thêm giảng viên thành công!')
+        toast.success('✅ Thêm giảng viên thành công!')
         
-        // Reset form
         setDelegate({
           id: '',
           name: '',
@@ -122,10 +167,9 @@ export default function AddDelegatePage() {
           dayOfBirth: '',
           gender: 'MALE',
           phone: '',
-          faculty: ''
         })
 
-        setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 1500)
+        setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 2000)
       }
     } catch (err: any) {
       console.error('=== ERROR ===')
@@ -150,7 +194,60 @@ export default function AddDelegatePage() {
     setLoading(true)
 
     try {
-      // Dùng axios thay vì fetch
+      // Kiểm tra có institution code và wallet address trong session
+      if (!session?.user?.code || !session?.user?.address) {
+        toast.error('Không tìm thấy thông tin trường hoặc địa chỉ ví trong session')
+        setLoading(false)
+        return
+      }
+
+      // Bước 1: Kiểm tra địa chỉ ví hiện tại khớp với session
+      toast.info('🔍 Đang kiểm tra địa chỉ ví...')
+      const { getCurrentWalletAddress } = await import('@/lib/contract')
+      const currentWallet = await getCurrentWalletAddress()
+      
+      if (!currentWallet) {
+        toast.error('Không thể lấy địa chỉ ví. Vui lòng kết nối MetaMask')
+        setLoading(false)
+        return
+      }
+
+      // So sánh địa chỉ ví (case-insensitive)
+      if (currentWallet.toLowerCase() !== session.user.address.toLowerCase()) {
+        toast.error(
+          `Địa chỉ ví không khớp!\nVí hiện tại: ${currentWallet}\nVí trong hệ thống: ${session.user.address}\nVui lòng chuyển sang đúng ví trong MetaMask`,
+          { duration: 8000 }
+        )
+        setLoading(false)
+        return
+      }
+
+      toast.success('✅ Địa chỉ ví hợp lệ')
+
+      // Bước 2: Batch approve delegates trên blockchain TRƯỚC
+      toast.info('🔄 Đang cấp quyền cho tất cả giảng viên trên blockchain...')
+      
+      const delegateAddresses = delegates.map(d => d.address)
+      
+      const blockchainResult = await batchApproveDelegatesOnChain(
+        session.user.code,
+        delegateAddresses
+      )
+
+      if (!blockchainResult.success) {
+        toast.error(
+          `❌ Không thể cấp quyền trên blockchain: ${blockchainResult.error}`,
+          { duration: 7000 }
+        )
+        setLoading(false)
+        return
+      }
+
+      toast.success(`✅ Đã cấp quyền cho ${delegateAddresses.length} giảng viên trên blockchain!`)
+      console.log('Blockchain TX:', blockchainResult.txHash)
+
+      // Bước 3: Sau khi blockchain thành công, mới thêm vào database
+      toast.info('💾 Đang lưu vào database...')
       const { data } = await axiosInstance.post('/dip-delegate', delegates)
 
       console.log('Batch submit response:', data)
@@ -161,10 +258,13 @@ export default function AddDelegatePage() {
         const failedCount = data.results.length - successCount
 
         if (failedCount === 0) {
-          toast.success(`Thêm ${successCount} giảng viên thành công!`)
-          setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 1500)
+          toast.success(`✅ Thêm ${successCount} giảng viên vào database thành công!`)
+          setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 2000)
         } else if (successCount === 0) {
-          toast.error(`Không thể thêm ${failedCount} giảng viên!`, { duration: 5000 })
+          toast.error(
+            `⚠️ Đã cấp quyền blockchain nhưng không thể thêm ${failedCount} giảng viên vào database!`,
+            { duration: 7000 }
+          )
           
           // Log chi tiết lỗi
           data.results.forEach((r: any, index: number) => {
@@ -175,8 +275,8 @@ export default function AddDelegatePage() {
         } else {
           // Một phần thành công, một phần thất bại
           toast.warning(
-            `Thêm ${successCount} giảng viên thành công, ${failedCount} thất bại!`,
-            { duration: 5000 }
+            `⚠️ Đã cấp quyền blockchain cho tất cả, nhưng chỉ lưu được ${successCount}/${delegates.length} giảng viên vào database`,
+            { duration: 7000 }
           )
 
           // Log chi tiết lỗi
@@ -190,8 +290,8 @@ export default function AddDelegatePage() {
         }
       } else {
         // Legacy response
-        toast.success(`Thêm ${delegates.length} giảng viên thành công!`)
-        setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 1500)
+        toast.success(`✅ Thêm ${delegates.length} giảng viên thành công!`)
+        setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 2000)
       }
     } catch (err: any) {
       console.error('=== ERROR ===')
@@ -220,7 +320,6 @@ export default function AddDelegatePage() {
         dayOfBirth: '',
         gender: 'MALE',
         phone: '',
-        faculty: ''
       })
     }
     setDelegates(newDelegates)
@@ -369,18 +468,6 @@ export default function AddDelegatePage() {
                   placeholder="0123456789"
                 />
               </div>
-
-              <div>
-                <label className="block mb-2 text-sm font-medium">Khoa *</label>
-                <input
-                  type="text"
-                  required
-                  value={delegate.faculty}
-                  onChange={(e) => setDelegate({ ...delegate, faculty: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Công nghệ thông tin"
-                />
-              </div>
             </div>
 
             <button
@@ -510,17 +597,6 @@ export default function AddDelegatePage() {
                           required
                           value={del.phone}
                           onChange={(e) => updateBatchDelegate(index, 'phone', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block mb-1 text-sm">Khoa *</label>
-                        <input
-                          type="text"
-                          required
-                          value={del.faculty}
-                          onChange={(e) => updateBatchDelegate(index, 'faculty', e.target.value)}
                           className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
                         />
                       </div>

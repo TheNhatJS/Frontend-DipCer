@@ -15,6 +15,8 @@ import {
 } from "react-icons/fa";
 import axiosInstance from "@/lib/axios";
 import { toast, Toaster } from "sonner";
+import { revokeDelegateOnChain, getCurrentWalletAddress } from "@/lib/contract";
+import { useSession } from "next-auth/react";
 
 type Delegate = {
   id: string;
@@ -28,12 +30,14 @@ type Delegate = {
 
 export default function DelegateListPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [delegates, setDelegates] = useState<Delegate[]>([]);
   const [filteredDelegates, setFilteredDelegates] = useState<Delegate[]>([]);
   const [selectedDelegate, setSelectedDelegate] = useState<Delegate | null>(
     null
   );
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   const [filterFaculty, setFilterFaculty] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -55,6 +59,8 @@ export default function DelegateListPage() {
       const { data: response } = await axiosInstance.get(
         "/dip-delegate?pageSize=100"
       );
+
+      console.log("API Response:", response);
 
       setDelegates(response.data || []);
       setFilteredDelegates(response.data || []);
@@ -91,11 +97,66 @@ export default function DelegateListPage() {
     setFilteredDelegates(filtered);
   }, [filterFaculty, searchTerm, delegates]);
 
+  
+
   const handleDelete = async (delegateId: string) => {
     try {
+      setDeleting(true);
+
+      // Tìm delegate để lấy addressWallet
+      const delegate = delegates.find((d) => d.id === delegateId);
+      if (!delegate) {
+        toast.error("Không tìm thấy thông tin giảng viên");
+        return;
+      }
+
+      // Bước 1: Kiểm tra session
+      if (!session?.user) {
+        toast.error("Vui lòng đăng nhập lại");
+        return;
+      }
+
+      const institutionCode = (session.user as any).code;
+      if (!institutionCode) {
+        toast.error("Không tìm thấy mã trường");
+        return;
+      }
+
+      // Bước 2: Lấy địa chỉ ví hiện tại từ MetaMask
+      toast.info("Đang kết nối với MetaMask...");
+      const walletAddress = await getCurrentWalletAddress();
+
+      if (!walletAddress) {
+        toast.error("Không thể lấy địa chỉ ví. Vui lòng kiểm tra MetaMask.");
+        return;
+      }
+
+      // Bước 3: Kiểm tra địa chỉ ví có khớp với session không
+      const sessionAddress = (session.user as any).address;
+      if (walletAddress.toLowerCase() !== sessionAddress?.toLowerCase()) {
+        toast.error(
+          `Địa chỉ ví không khớp!\nVí hiện tại: ${walletAddress}\nVí đã đăng ký: ${sessionAddress}`
+        );
+        return;
+      }
+
+      // Bước 4: Thu hồi quyền delegate trên blockchain
+      toast.info("Đang thu hồi quyền delegate trên blockchain...");
+      const result = await revokeDelegateOnChain(
+        institutionCode,
+        delegate.addressWallet
+      );
+
+      if (!result.success) {
+        toast.error(result.error || "Thu hồi quyền thất bại");
+        return;
+      }
+
+      // Bước 5: Xóa delegate khỏi database
+      toast.info("Đang xóa delegate khỏi hệ thống...");
       await axiosInstance.delete(`/dip-delegate/${delegateId}`);
 
-      toast.success("Xóa giảng viên thành công!");
+      toast.success("Xóa giảng viên và thu hồi quyền thành công!");
       fetchDelegates();
       setSelectedDelegate(null);
       setShowDetailModal(false);
@@ -106,6 +167,8 @@ export default function DelegateListPage() {
       toast.error(
         error.response?.data?.message || "Đã xảy ra lỗi khi xóa giảng viên"
       );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -271,9 +334,6 @@ export default function DelegateListPage() {
                       Họ và tên
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
-                      Khoa
-                    </th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
                       Email
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
@@ -298,9 +358,6 @@ export default function DelegateListPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-white">
                         {delegate.name}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-300">
-                        {delegate.faculty}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-300">
                         {delegate.email}
@@ -400,10 +457,6 @@ export default function DelegateListPage() {
                   <label className="text-sm text-gray-400">Email</label>
                   <p className="text-white">{selectedDelegate.email}</p>
                 </div>
-                <div>
-                  <label className="text-sm text-gray-400">Khoa</label>
-                  <p className="text-white">{selectedDelegate.faculty}</p>
-                </div>
                 <div className="col-span-2">
                   <label className="text-sm text-gray-400">Địa chỉ ví</label>
                   <p className="text-white font-mono text-sm break-all bg-white/5 p-3 rounded-lg">
@@ -457,7 +510,7 @@ export default function DelegateListPage() {
               </h3>
 
               {/* Message */}
-              <p className="text-center text-gray-300 mb-6">
+              <p className="text-center text-gray-300 mb-4">
                 Bạn có chắc chắn muốn xóa giảng viên{" "}
                 <span className="font-semibold text-purple-400">
                   {delegateToDelete.name}
@@ -465,9 +518,27 @@ export default function DelegateListPage() {
                 (Mã: {delegateToDelete.id})?
               </p>
 
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-6">
-                <p className="text-yellow-400 text-sm text-center">
-                  ⚠️ Hành động này không thể hoàn tác!
+              {/* Delegate Info */}
+              <div className="bg-white/5 border border-white/10 rounded-lg p-4 mb-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Email:</span>
+                  <span className="text-white">{delegateToDelete.email}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Khoa:</span>
+                  <span className="text-white">{delegateToDelete.faculty}</span>
+                </div>
+                <div className="flex flex-col gap-1 text-sm">
+                  <span className="text-gray-400">Địa chỉ ví:</span>
+                  <span className="text-white font-mono text-xs break-all">
+                    {delegateToDelete.addressWallet}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6">
+                <p className="text-red-400 text-sm text-center">
+                  ⚠️ Hành động này sẽ thu hồi quyền trên blockchain và xóa khỏi hệ thống!
                 </p>
               </div>
 
@@ -475,15 +546,24 @@ export default function DelegateListPage() {
               <div className="flex gap-3">
                 <button
                   onClick={cancelDelete}
-                  className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-semibold transition"
+                  disabled={deleting}
+                  className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Hủy
                 </button>
                 <button
                   onClick={confirmDelete}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white rounded-xl font-semibold transition shadow-lg"
+                  disabled={deleting}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 text-white rounded-xl font-semibold transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Xóa
+                  {deleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    "Xác nhận xóa"
+                  )}
                 </button>
               </div>
             </div>

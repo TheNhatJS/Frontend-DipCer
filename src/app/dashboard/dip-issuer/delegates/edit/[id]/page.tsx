@@ -152,11 +152,14 @@ export default function EditDelegatePage() {
       console.log("Delegate ID:", delegateId);
 
       // Dùng axios để cập nhật
-      const response = await axiosInstance.patch(`/dip-delegate/${delegateId}`, updateData);
-      
+      const response = await axiosInstance.patch(
+        `/dip-delegate/${delegateId}`,
+        updateData
+      );
+
       console.log("Update response:", response.data);
 
-      toast.success("Cập nhật giảng viên thành công!");
+      toast.success("Cập nhật chuyên viên thành công!");
       setTimeout(() => router.push("/dashboard/dip-issuer/delegates"), 1500);
     } catch (err: any) {
       console.error("Lỗi:", err);
@@ -256,7 +259,7 @@ export default function EditDelegatePage() {
             {/* ID - Read only */}
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-300">
-                Mã giảng viên
+                Mã chuyên viên
               </label>
               <input
                 type="text"
