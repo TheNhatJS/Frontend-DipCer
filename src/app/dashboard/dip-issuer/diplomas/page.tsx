@@ -258,14 +258,7 @@ export default function DiplomasPage() {
       <Toaster position="top-right" richColors />
 
       <div className="max-w-7xl mx-auto">
-        <button
-          onClick={() => router.push("/dashboard/dip-issuer")}
-          className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition"
-        >
-          <FaArrowLeft /> Quay lại Dashboard
-        </button>
-
-        <h1 className="text-3xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
           Danh sách văn bằng đã cấp
         </h1>
 

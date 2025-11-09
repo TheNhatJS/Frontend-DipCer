@@ -11,7 +11,6 @@ import {
   FaFilter,
   FaTimes,
   FaSearch,
-  FaArrowLeft,
 } from "react-icons/fa";
 import axiosInstance from "@/lib/axios";
 import { toast, Toaster } from "sonner";
@@ -106,7 +105,7 @@ export default function DelegateListPage() {
       // Tìm delegate để lấy addressWallet
       const delegate = delegates.find((d) => d.id === delegateId);
       if (!delegate) {
-        toast.error("Không tìm thấy thông tin giảng viên");
+        toast.error("Không tìm thấy thông tin chuyên viên");
         return;
       }
 
@@ -156,7 +155,7 @@ export default function DelegateListPage() {
       toast.info("Đang xóa delegate khỏi hệ thống...");
       await axiosInstance.delete(`/dip-delegate/${delegateId}`);
 
-      toast.success("Xóa giảng viên và thu hồi quyền thành công!");
+      toast.success("Xóa chuyên viên và thu hồi quyền thành công!");
       fetchDelegates();
       setSelectedDelegate(null);
       setShowDetailModal(false);
@@ -165,7 +164,7 @@ export default function DelegateListPage() {
     } catch (error: any) {
       console.error("Lỗi:", error);
       toast.error(
-        error.response?.data?.message || "Đã xảy ra lỗi khi xóa giảng viên"
+        error.response?.data?.message || "Đã xảy ra lỗi khi xóa chuyên viên"
       );
     } finally {
       setDeleting(false);
@@ -210,7 +209,7 @@ export default function DelegateListPage() {
         <Toaster position="top-right" richColors />
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto mb-4"></div>
-          <p className="text-gray-400">Đang tải danh sách giảng viên...</p>
+          <p className="text-gray-400">Đang tải danh sách chuyên viên...</p>
         </div>
       </div>
     );
@@ -223,22 +222,15 @@ export default function DelegateListPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => router.push("/dashboard/dip-issuer")}
-            className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition"
-          >
-            <FaArrowLeft /> Quay lại Dashboard
-          </button>
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent mb-2">
-                <FaChalkboardTeacher className="inline mr-3" />
-                Quản lý Giảng viên
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
+                Quản lý Chuyên viên
               </h1>
               <p className="text-gray-400">
                 {filteredDelegates.length !== delegates.length
-                  ? `Hiển thị ${filteredDelegates.length} / ${delegates.length} giảng viên`
-                  : `Tổng số: ${delegates.length} giảng viên`}
+                  ? `Hiển thị ${filteredDelegates.length} / ${delegates.length} chuyên viên`
+                  : `Tổng số: ${delegates.length} chuyên viên`}
               </p>
             </div>
 
@@ -247,7 +239,7 @@ export default function DelegateListPage() {
               className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-6 py-3 rounded-xl font-semibold transition shadow-lg hover:scale-105"
             >
               <FaPlus />
-              Thêm giảng viên
+              Thêm chuyên viên
             </button>
           </div>
 
@@ -257,7 +249,7 @@ export default function DelegateListPage() {
               <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Tìm kiếm theo tên, mã giảng viên, email..."
+                placeholder="Tìm kiếm theo tên, mã chuyên viên, email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -314,8 +306,8 @@ export default function DelegateListPage() {
             <FaChalkboardTeacher className="mx-auto text-6xl text-gray-500 mb-4" />
             <p className="text-gray-400 text-lg">
               {searchTerm || filterFaculty
-                ? "Không tìm thấy giảng viên phù hợp với bộ lọc"
-                : "Chưa có giảng viên nào trong hệ thống"}
+                ? "Không tìm thấy chuyên viên phù hợp với bộ lọc"
+                : "Chưa có chuyên viên nào trong hệ thống"}
             </p>
           </div>
         ) : (
@@ -328,7 +320,7 @@ export default function DelegateListPage() {
                       STT
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
-                      Mã GV
+                      Mã CV
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
                       Họ và tên
@@ -417,7 +409,7 @@ export default function DelegateListPage() {
           <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex justify-between items-center rounded-t-2xl">
               <h2 className="text-2xl font-bold text-white">
-                Chi tiết giảng viên
+                Chi tiết chuyên viên
               </h2>
               <button
                 onClick={() => setShowDetailModal(false)}
@@ -430,7 +422,7 @@ export default function DelegateListPage() {
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-gray-400">Mã giảng viên</label>
+                  <label className="text-sm text-gray-400">Mã chuyên viên</label>
                   <p className="text-white font-semibold text-lg">
                     {selectedDelegate.id}
                   </p>
@@ -486,7 +478,7 @@ export default function DelegateListPage() {
                   className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 px-6 py-3 rounded-xl font-semibold transition"
                 >
                   <FaTrash />
-                  Xóa giảng viên
+                  Xóa chuyên viên
                 </button>
               </div>
             </div>
@@ -506,12 +498,12 @@ export default function DelegateListPage() {
 
               {/* Title */}
               <h3 className="text-2xl font-bold text-center text-white mb-2">
-                Xác nhận xóa giảng viên
+                Xác nhận xóa chuyên viên
               </h3>
 
               {/* Message */}
               <p className="text-center text-gray-300 mb-4">
-                Bạn có chắc chắn muốn xóa giảng viên{" "}
+                Bạn có chắc chắn muốn xóa chuyên viên{" "}
                 <span className="font-semibold text-purple-400">
                   {delegateToDelete.name}
                 </span>{" "}

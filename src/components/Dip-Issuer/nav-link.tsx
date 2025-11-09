@@ -46,7 +46,7 @@ const links = [
 const settingsOptions = [
   {
     name: 'Chuyển địa chỉ ví',
-    href: '/dashboard/dip-issuer/settings',
+    href: '/dashboard/dip-issuer/change-address',
     icon: HiRefresh,
     description: 'Chuyển đổi địa chỉ ví'
   },

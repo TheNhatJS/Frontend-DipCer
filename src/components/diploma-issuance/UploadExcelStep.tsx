@@ -20,7 +20,7 @@ export default function UploadExcelStep({ onUploadSuccess, onUpload, loading }: 
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-4">📄 Bước 1: Upload File Excel</h2>
+        <h2 className="text-2xl font-bold mb-4">Bước 1: Upload File Excel</h2>
         <p className="text-gray-400 mb-6">
           Upload file Excel chứa danh sách sinh viên cần cấp phát văn bằng
         </p>
@@ -49,7 +49,7 @@ export default function UploadExcelStep({ onUploadSuccess, onUpload, loading }: 
           disabled={!excelFile || loading}
           className="bg-gradient-to-r from-blue-500 to-blue-600 hover:scale-105 px-8 py-3 rounded-xl text-lg font-semibold transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? '⏳ Đang xử lý...' : '📤 Upload Excel'}
+          {loading ? 'Đang xử lý...' : 'Upload Excel'}
         </button>
       </div>
 

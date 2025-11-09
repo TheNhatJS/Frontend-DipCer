@@ -114,7 +114,7 @@ export default function IssuerInfoPage() {
         {/* Header Section */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
-            🏫 Dashboard Nhà trường
+            Dashboard Nhà trường
           </h1>
           <p className="text-gray-400">
             Quản lý chuyên viên và văn bằng
@@ -141,7 +141,7 @@ export default function IssuerInfoPage() {
         )}
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           
 
           <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 hover:shadow-purple-500/20 hover:shadow-lg transition-all">
@@ -195,7 +195,7 @@ export default function IssuerInfoPage() {
         </div>
 
         {/* Management Links */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4">
           <button
             onClick={() => router.push('/dashboard/dip-issuer/delegates')}
             className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl transition-all text-left"

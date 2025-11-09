@@ -167,12 +167,6 @@ export default function IssuerSettingsPage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => router.push("/dashboard/dip-issuer")}
-            className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition"
-          >
-            <HiArrowLeft className="text-2xl text-white" />
-          </button>
           <div>
             <h1 className="text-3xl font-bold text-white">Chuyển địa chỉ ví</h1>
             <p className="text-gray-400 mt-1">

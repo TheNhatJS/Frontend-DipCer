@@ -389,8 +389,8 @@ export default function IssueCertificatePage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-blue-400 mb-2">
-            🎓 Cấp phát văn bằng hàng loạt
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
+            Cấp phát văn bằng hàng loạt
           </h1>
           <p className="text-gray-400">
             Quy trình tối ưu hóa cấp phát văn bằng với batch processing
@@ -402,7 +402,6 @@ export default function IssueCertificatePage() {
               onClick={() => setShowUploadModal(true)}
               className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl font-semibold transition-all shadow-lg inline-flex items-center gap-2"
             >
-              <span>📤</span>
               <span>Tải lên Excel mới</span>
             </button>
           </div>
@@ -412,10 +411,10 @@ export default function IssueCertificatePage() {
         <div className="flex justify-center mb-8 overflow-x-auto pb-4">
           <div className="flex items-center gap-4">
             {[
-              { id: 'drafts', label: '1. Quản lý', icon: '📋' },
-              { id: 'images', label: '2. Upload Ảnh', icon: '🖼️' },
-              { id: 'review', label: '3. Phê duyệt', icon: '✅' },
-              { id: 'mint', label: '4. Mint NFT', icon: '⛓️' },
+              { id: 'drafts', label: '1. Quản lý' },
+              { id: 'images', label: '2. Upload Ảnh' },
+              { id: 'review', label: '3. Phê duyệt' },
+              { id: 'mint', label: '4. Mint NFT' },
             ].map((step, index) => (
               <div key={step.id} className="flex items-center">
                 <div
@@ -425,7 +424,7 @@ export default function IssueCertificatePage() {
                       : 'bg-white/5 text-gray-400'
                   }`}
                 >
-                  {step.icon} {step.label}
+                  {step.label}
                 </div>
                 {index < 3 && (
                   <div className="w-8 h-0.5 bg-gray-600 mx-2"></div>
@@ -494,7 +493,7 @@ export default function IssueCertificatePage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 border border-white/10 rounded-2xl shadow-2xl max-w-2xl w-full p-8">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">📤 Upload Excel</h2>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">Upload Excel</h2>
               <button
                 onClick={() => setShowUploadModal(false)}
                 className="text-gray-400 hover:text-white text-2xl"
@@ -546,7 +545,7 @@ export default function IssueCertificatePage() {
             </div>
 
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6">
-              <p className="text-sm text-blue-300 font-semibold mb-2">📝 Hướng dẫn:</p>
+              <p className="text-sm text-blue-300 font-semibold mb-2">Hướng dẫn:</p>
               <ol className="text-sm text-gray-300 space-y-1 list-decimal list-inside">
                 <li>Mở MetaMask</li>
                 <li>Click vào icon tài khoản (góc trên bên phải)</li>

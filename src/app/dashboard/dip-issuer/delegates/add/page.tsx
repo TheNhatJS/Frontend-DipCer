@@ -107,7 +107,7 @@ export default function AddDelegatePage() {
         const result = data[0]
         
         if (result.status === 'success') {
-          toast.success('✅ Thêm giảng viên thành công!')
+          toast.success('✅ Thêm chuyên viên thành công!')
           
           // Reset form
           setDelegate({
@@ -123,7 +123,7 @@ export default function AddDelegatePage() {
           setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 2000)
         } else {
           // Database fail nhưng blockchain đã thành công
-          const errorMsg = result.error || 'Không thể thêm giảng viên'
+          const errorMsg = result.error || 'Không thể thêm chuyên viên'
           
           toast.error(
             `⚠️ Đã cấp quyền blockchain nhưng lưu database thất bại: ${errorMsg}`,
@@ -136,7 +136,7 @@ export default function AddDelegatePage() {
         const result = data.results[0]
         
         if (result.success) {
-          toast.success('✅ Thêm giảng viên thành công!')
+          toast.success('✅ Thêm chuyên viên thành công!')
           
           setDelegate({
             id: '',
@@ -157,7 +157,7 @@ export default function AddDelegatePage() {
           console.error('Database failed:', result)
         }
       } else {
-        toast.success('✅ Thêm giảng viên thành công!')
+        toast.success('✅ Thêm chuyên viên thành công!')
         
         setDelegate({
           id: '',
@@ -225,7 +225,7 @@ export default function AddDelegatePage() {
       toast.success('✅ Địa chỉ ví hợp lệ')
 
       // Bước 2: Batch approve delegates trên blockchain TRƯỚC
-      toast.info('🔄 Đang cấp quyền cho tất cả giảng viên trên blockchain...')
+      toast.info('🔄 Đang cấp quyền cho tất cả chuyên viên trên blockchain...')
       
       const delegateAddresses = delegates.map(d => d.address)
       
@@ -243,7 +243,7 @@ export default function AddDelegatePage() {
         return
       }
 
-      toast.success(`✅ Đã cấp quyền cho ${delegateAddresses.length} giảng viên trên blockchain!`)
+      toast.success(`✅ Đã cấp quyền cho ${delegateAddresses.length} chuyên viên trên blockchain!`)
       console.log('Blockchain TX:', blockchainResult.txHash)
 
       // Bước 3: Sau khi blockchain thành công, mới thêm vào database
@@ -258,11 +258,11 @@ export default function AddDelegatePage() {
         const failedCount = data.results.length - successCount
 
         if (failedCount === 0) {
-          toast.success(`✅ Thêm ${successCount} giảng viên vào database thành công!`)
+          toast.success(`✅ Thêm ${successCount} chuyên viên vào database thành công!`)
           setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 2000)
         } else if (successCount === 0) {
           toast.error(
-            `⚠️ Đã cấp quyền blockchain nhưng không thể thêm ${failedCount} giảng viên vào database!`,
+            `⚠️ Đã cấp quyền blockchain nhưng không thể thêm ${failedCount} chuyên viên vào database!`,
             { duration: 7000 }
           )
           
@@ -275,7 +275,7 @@ export default function AddDelegatePage() {
         } else {
           // Một phần thành công, một phần thất bại
           toast.warning(
-            `⚠️ Đã cấp quyền blockchain cho tất cả, nhưng chỉ lưu được ${successCount}/${delegates.length} giảng viên vào database`,
+            `⚠️ Đã cấp quyền blockchain cho tất cả, nhưng chỉ lưu được ${successCount}/${delegates.length} chuyên viên vào database`,
             { duration: 7000 }
           )
 
@@ -290,7 +290,7 @@ export default function AddDelegatePage() {
         }
       } else {
         // Legacy response
-        toast.success(`✅ Thêm ${delegates.length} giảng viên thành công!`)
+        toast.success(`✅ Thêm ${delegates.length} chuyên viên thành công!`)
         setTimeout(() => router.push('/dashboard/dip-issuer/delegates'), 2000)
       }
     } catch (err: any) {
@@ -344,17 +344,10 @@ export default function AddDelegatePage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => router.push('/dashboard/dip-issuer')}
-            className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition"
-          >
-            <FaArrowLeft /> Quay lại Dashboard
-          </button>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent mb-2">
-            <FaChalkboardTeacher className="inline mr-3" />
-            Thêm Giảng viên
+            Thêm chuyên viên
           </h1>
-          <p className="text-gray-400">Thêm một hoặc nhiều giảng viên vào hệ thống</p>
+          <p className="text-gray-400">Thêm một hoặc nhiều chuyên viên vào hệ thống</p>
         </div>
 
         {/* Mode Selector */}
@@ -367,7 +360,7 @@ export default function AddDelegatePage() {
                 : 'bg-white/5 text-gray-400 hover:bg-white/10'
             }`}
           >
-            Thêm 1 giảng viên
+            Thêm 1 chuyên viên
           </button>
           <button
             onClick={() => setMode('batch')}
@@ -377,7 +370,7 @@ export default function AddDelegatePage() {
                 : 'bg-white/5 text-gray-400 hover:bg-white/10'
             }`}
           >
-            Thêm nhiều giảng viên
+            Thêm nhiều chuyên viên
           </button>
         </div>
 
@@ -386,14 +379,14 @@ export default function AddDelegatePage() {
           <form onSubmit={handleSingleSubmit} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block mb-2 text-sm font-medium">Mã giảng viên *</label>
+                <label className="block mb-2 text-sm font-medium">Mã chuyên viên *</label>
                 <input
                   type="text"
                   required
                   value={delegate.id}
                   onChange={(e) => setDelegate({ ...delegate, id: e.target.value })}
                   className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="GV001"
+                  placeholder="CV001"
                 />
               </div>
 
@@ -475,7 +468,7 @@ export default function AddDelegatePage() {
               disabled={loading}
               className="w-full mt-8 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-6 py-3 rounded-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Đang xử lý...' : 'Thêm giảng viên'}
+              {loading ? 'Đang xử lý...' : 'Thêm chuyên viên'}
             </button>
           </form>
         )}
@@ -484,7 +477,7 @@ export default function AddDelegatePage() {
         {mode === 'batch' && (
           <div>
             <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 mb-6">
-              <label className="block mb-2 text-sm font-medium">Số lượng giảng viên</label>
+              <label className="block mb-2 text-sm font-medium">Số lượng chuyên viên</label>
               <div className="flex gap-4">
                 <input
                   type="number"
@@ -509,7 +502,7 @@ export default function AddDelegatePage() {
                 {delegates.map((del, index) => (
                   <div key={index} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 relative">
                     <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-xl font-semibold">Giảng viên #{index + 1}</h3>
+                      <h3 className="text-xl font-semibold">chuyên viên #{index + 1}</h3>
                       {delegates.length > 1 && (
                         <button
                           type="button"
@@ -609,7 +602,7 @@ export default function AddDelegatePage() {
                   disabled={loading}
                   className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 px-6 py-3 rounded-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? 'Đang xử lý...' : `Thêm ${delegates.length} giảng viên`}
+                  {loading ? 'Đang xử lý...' : `Thêm ${delegates.length} chuyên viên`}
                 </button>
               </form>
             )}
