@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import axiosInstance from '@/lib/axios'
 import axios from 'axios'
-import { batchMintDiplomas } from '@/lib/contract'
+import { batchMintDiplomas, getCurrentWalletAddress } from '@/lib/contract'
 import { DiplomaDraft, StepType } from '@/types/diploma-draft'
 
 // Components
@@ -206,35 +206,29 @@ export default function IssueCertificatePage() {
 
     setLoading(true)
     try {
-      // Kiểm tra địa chỉ ví MetaMask
-      if (!window.ethereum) {
-        toast.error('Vui lòng cài đặt MetaMask để tiếp tục!')
+      // Kiểm tra có institution code và wallet address trong session
+      if (!session?.user?.code || !session?.user?.address) {
+        toast.error('Không tìm thấy thông tin trường hoặc địa chỉ ví trong session')
         setLoading(false)
         return
       }
 
-      // Lấy địa chỉ ví hiện tại từ MetaMask
-      const { ethers } = await import('ethers')
-      const provider = new ethers.BrowserProvider(window.ethereum)
-      const signer = await provider.getSigner()
-      const currentWalletAddress = await signer.getAddress()
-
-      // Lấy địa chỉ ví đã đăng ký từ session
-      const registeredWalletAddress = session?.user?.address
-
-      if (!registeredWalletAddress) {
-        toast.error('Không tìm thấy địa chỉ ví đã đăng ký trong session!')
+      // Bước 1: Kiểm tra địa chỉ ví hiện tại khớp với session
+      toast.info('🔍 Đang kiểm tra địa chỉ ví...')
+      const currentWallet = await getCurrentWalletAddress()
+      
+      if (!currentWallet) {
+        toast.error('Không thể lấy địa chỉ ví. Vui lòng kết nối MetaMask')
         setLoading(false)
         return
       }
 
-      // So sánh địa chỉ (case-insensitive)
-      if (currentWalletAddress.toLowerCase() !== registeredWalletAddress.toLowerCase()) {
-        setWalletMismatchInfo({
-          registered: registeredWalletAddress,
-          current: currentWalletAddress,
-        })
-        setShowWalletMismatchModal(true)
+      // So sánh địa chỉ ví (case-insensitive)
+      if (currentWallet.toLowerCase() !== session.user.address.toLowerCase()) {
+        toast.error(
+          `Địa chỉ ví không khớp!\nVí hiện tại: ${currentWallet}\nVí trong hệ thống: ${session.user.address}\nVui lòng chuyển sang đúng ví trong MetaMask`,
+          { duration: 8000 }
+        )
         setLoading(false)
         return
       }
@@ -251,6 +245,13 @@ export default function IssueCertificatePage() {
 
       toast.info('📤 Đang upload metadata lên IPFS...')
 
+      // ✅ Lấy thông tin trường - hoạt động cho cả ISSUER và DELEGATE
+      const schoolResponse = await axiosInstance.get(`/dip-issuer/me/info`)
+      const schoolData = schoolResponse.data
+      
+      console.log('📚 School data from API:', schoolData)
+      console.log('📚 Institution name:', schoolData.schoolName)
+
       // Upload metadata for each draft
       const metadataPromises = approvedDrafts.map(async (draft) => {
         const metadata = {
@@ -262,10 +263,12 @@ export default function IssueCertificatePage() {
           faculty: draft.faculty,
           class: draft.studentClass,
           issueDate: new Date().toISOString().split('T')[0],
-          institutionName: session?.user?.name || 'Unknown',
-          institutionCode: session?.user?.code || 'Unknown',
+          institutionName: schoolData.schoolName || 'Unknown', // ✅ Luôn lấy từ schoolData
+          institutionCode: schoolData.code || session?.user?.code || 'UNKNOWN',
           image: draft.imageCID,
         }
+
+        console.log('📝 Metadata to upload:', metadata)
 
         const res = await axios.post('/api/upload/metadata', metadata, {
           headers: { 'Content-Type': 'application/json' },

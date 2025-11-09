@@ -16,15 +16,16 @@ import axiosInstance from "@/lib/axios";
 import { toast, Toaster } from "sonner";
 import { revokeDelegateOnChain, getCurrentWalletAddress } from "@/lib/contract";
 import { useSession } from "next-auth/react";
+import { canManageInstitution } from "@/lib/roleCheck";
 
 type Delegate = {
   id: string;
   name: string;
   email: string;
   gender: string;
-  faculty: string;
   addressWallet: string;
   dayOfBirth: string;
+  isActivated: boolean;
 };
 
 export default function DelegateListPage() {
@@ -38,7 +39,7 @@ export default function DelegateListPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
-  const [filterFaculty, setFilterFaculty] = useState<string>("");
+  const [filterActivated, setFilterActivated] = useState<string>(""); // ✅ Thêm bộ lọc isActivated
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -47,13 +48,16 @@ export default function DelegateListPage() {
     null
   );
 
-  const uniqueFaculties = Array.from(
-    new Set(delegates.map((d) => d.faculty))
-  ).sort();
-
   const fetchDelegates = async () => {
     try {
       setLoading(true);
+
+      // ⚠️ CHỈ ISSUER mới được quản lý delegates
+      if (!session || !canManageInstitution(session.user.role)) {
+        toast.error("Bạn không có quyền truy cập trang này!");
+        router.push("/");
+        return;
+      }
 
       const { data: response } = await axiosInstance.get(
         "/dip-delegate?pageSize=100"
@@ -74,14 +78,18 @@ export default function DelegateListPage() {
   };
 
   useEffect(() => {
-    fetchDelegates();
-  }, []);
+    if (session) {
+      fetchDelegates();
+    }
+  }, [session]);
 
   useEffect(() => {
     let filtered = delegates;
 
-    if (filterFaculty) {
-      filtered = filtered.filter((d) => d.faculty === filterFaculty);
+    // ✅ Lọc theo isActivated
+    if (filterActivated !== "") {
+      const isActive = filterActivated === "true";
+      filtered = filtered.filter((d) => d.isActivated === isActive);
     }
 
     if (searchTerm) {
@@ -94,9 +102,7 @@ export default function DelegateListPage() {
     }
 
     setFilteredDelegates(filtered);
-  }, [filterFaculty, searchTerm, delegates]);
-
-  
+  }, [filterActivated, searchTerm, delegates]);
 
   const handleDelete = async (delegateId: string) => {
     try {
@@ -193,7 +199,7 @@ export default function DelegateListPage() {
   };
 
   const clearFilters = () => {
-    setFilterFaculty("");
+    setFilterActivated("");
     setSearchTerm("");
   };
 
@@ -255,7 +261,6 @@ export default function DelegateListPage() {
                 className="w-full pl-12 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
-
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-4 py-3 rounded-xl font-semibold transition shadow-lg ${
@@ -273,19 +278,23 @@ export default function DelegateListPage() {
           {showFilters && (
             <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 mb-4">
               <div className="flex items-center gap-4 flex-wrap">
+                {/* Bộ lọc trạng thái kích hoạt */}
                 <div className="flex-1 min-w-[200px]">
-                  <label className="block text-sm mb-2">Khoa</label>
+                  <label className="block text-sm mb-2">Trạng thái</label>
                   <select
-                    value={filterFaculty}
-                    onChange={(e) => setFilterFaculty(e.target.value)}
-                    className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    value={filterActivated}
+                    onChange={(e) => setFilterActivated(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 [&>option]:text-black [&>option]:bg-white"
                   >
-                    <option value="">Tất cả khoa</option>
-                    {uniqueFaculties.map((faculty) => (
-                      <option key={faculty} value={faculty}>
-                        {faculty}
-                      </option>
-                    ))}
+                    <option value="" className="text-black bg-white">
+                      Tất cả
+                    </option>
+                    <option value="true" className="text-black bg-white">
+                      Còn quyền
+                    </option>
+                    <option value="false" className="text-black bg-white">
+                      Đã thu hồi
+                    </option>
                   </select>
                 </div>
 
@@ -305,7 +314,7 @@ export default function DelegateListPage() {
           <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-12 text-center">
             <FaChalkboardTeacher className="mx-auto text-6xl text-gray-500 mb-4" />
             <p className="text-gray-400 text-lg">
-              {searchTerm || filterFaculty
+              {searchTerm
                 ? "Không tìm thấy chuyên viên phù hợp với bộ lọc"
                 : "Chưa có chuyên viên nào trong hệ thống"}
             </p>
@@ -330,6 +339,9 @@ export default function DelegateListPage() {
                     </th>
                     <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
                       Giới tính
+                    </th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">
+                      Trạng thái
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-semibold text-gray-300">
                       Thao tác
@@ -363,6 +375,17 @@ export default function DelegateListPage() {
                           }`}
                         >
                           {delegate.gender === "MALE" ? "Nam" : "Nữ"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            delegate.isActivated
+                              ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                              : "bg-red-500/20 text-red-300 border border-red-500/30"
+                          }`}
+                        >
+                          {delegate.isActivated ? "Còn quyền" : "Đã thu hồi"}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm">
@@ -422,7 +445,9 @@ export default function DelegateListPage() {
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm text-gray-400">Mã chuyên viên</label>
+                  <label className="text-sm text-gray-400">
+                    Mã chuyên viên
+                  </label>
                   <p className="text-white font-semibold text-lg">
                     {selectedDelegate.id}
                   </p>
@@ -507,6 +532,7 @@ export default function DelegateListPage() {
                 <span className="font-semibold text-purple-400">
                   {delegateToDelete.name}
                 </span>{" "}
+                <br />
                 (Mã: {delegateToDelete.id})?
               </p>
 
@@ -516,11 +542,8 @@ export default function DelegateListPage() {
                   <span className="text-gray-400">Email:</span>
                   <span className="text-white">{delegateToDelete.email}</span>
                 </div>
+
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Khoa:</span>
-                  <span className="text-white">{delegateToDelete.faculty}</span>
-                </div>
-                <div className="flex flex-col gap-1 text-sm">
                   <span className="text-gray-400">Địa chỉ ví:</span>
                   <span className="text-white font-mono text-xs break-all">
                     {delegateToDelete.addressWallet}
@@ -530,7 +553,8 @@ export default function DelegateListPage() {
 
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6">
                 <p className="text-red-400 text-sm text-center">
-                  ⚠️ Hành động này sẽ thu hồi quyền trên blockchain và xóa khỏi hệ thống!
+                  ⚠️ Hành động này sẽ thu hồi quyền trên blockchain và xóa khỏi
+                  hệ thống!
                 </p>
               </div>
 

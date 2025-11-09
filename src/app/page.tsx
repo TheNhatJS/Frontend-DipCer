@@ -69,13 +69,16 @@ export default function Home() {
       // 4. Xác thực văn bằng với blockchain
       toast.loading("Đang xác thực với blockchain...", { id: "search" });
 
+      // ✅ Nếu delegate cấp phát thì dùng delegateAddress, ngược lại dùng issuerAddress
+      const actualIssuerAddress = diplomaFromDB.delegateAddress || diplomaFromDB.issuerAddress;
+
       // ✅ Sử dụng issueDate từ blockchain (nguồn tin cậy)
       const verificationResult = await verifyDiplomaWithBlockchain({
         tokenId: diplomaFromDB.id,
         institutionCode: diplomaFromDB.issuerCode,
         serialNumber: diplomaFromDB.serialNumber,
         studentAddress: diplomaFromDB.studentAddress,
-        issuerAddress: diplomaFromDB.issuerAddress,
+        issuerAddress: actualIssuerAddress, // ✅ Dùng địa chỉ người thực sự cấp phát
         issueDate: Math.floor(
           new Date(diplomaFromDB.issuedAt).getTime() / 1000
         ),
@@ -98,17 +101,16 @@ export default function Home() {
       setDiplomaData({
         id: diplomaFromDB.id,
         serialNumber: diplomaFromDB.serialNumber,
-        name: metadata.fullName || metadata.studentName,
-        degree: metadata.classification,
+        name: diplomaFromDB.studentName,
+        GPA: diplomaFromDB.GPA,
         issuedBy: diplomaFromDB.issuerAddress,
         issuerCode: diplomaFromDB.issuerCode,
-        image: IPFSUrl,
         dayOfBirth: diplomaFromDB.studentDayOfBirth,
         issuedAt: new Date(diplomaFromDB.issuedAt), // Database field là 'issuedAt'
         address: diplomaFromDB.studentAddress,
-        school: metadata.school || metadata.institutionName,
-        faculty: metadata.faculty,
-        status: diplomaFromDB.status,
+        school: diplomaFromDB.issuerName,
+        faculty: diplomaFromDB.faculty,
+        image: IPFSUrl,
       });
 
       // Mở modal
@@ -275,6 +277,18 @@ export default function Home() {
                 </p>
                 <p>
                   <span className="font-semibold text-white/80">
+                    📍 Mã trường:
+                  </span>{" "}
+                  {diplomaData.issuerCode}
+                </p>
+                <p>
+                  <span className="font-semibold text-white/80">
+                    🏫 Trường:
+                  </span>{" "}
+                  {diplomaData.school}
+                </p>
+                <p>
+                  <span className="font-semibold text-white/80">
                     �👤 Họ tên:
                   </span>{" "}
                   {diplomaData.name}
@@ -288,12 +302,6 @@ export default function Home() {
                         "vi-VN"
                       )
                     : "Không có"}
-                </p>
-                <p>
-                  <span className="font-semibold text-white/80">
-                    🏫 Trường:
-                  </span>{" "}
-                  {diplomaData.school}
                 </p>
                 <p>
                   <span className="font-semibold text-white/80">🏛️ Khoa:</span>{" "}
@@ -314,12 +322,6 @@ export default function Home() {
                   <span className="break-all block text-gray-300">
                     {diplomaData.issuedBy}
                   </span>
-                </p>
-                <p>
-                  <span className="font-semibold text-white/80">
-                    📍 Mã trường:
-                  </span>{" "}
-                  {diplomaData.issuerCode}
                 </p>
                 <p>
                   <span className="font-semibold text-white/80">

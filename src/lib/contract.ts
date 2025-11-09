@@ -313,6 +313,80 @@ export async function verifyDiplomaWithBlockchain(
       tokenURI
     });
 
+    // ✅ Kiểm tra xem token có tồn tại trên blockchain không
+    try {
+      const owner = await contract.ownerOf(tokenId);
+      console.log("👤 Owner của token trên blockchain:", owner);
+      console.log("👤 Student address từ DB:", studentAddress);
+      
+      if (owner.toLowerCase() !== studentAddress.toLowerCase()) {
+        return {
+          success: false,
+          isValid: false,
+          message: `⚠️ Văn bằng không thuộc về địa chỉ này! Owner: ${owner}`,
+        };
+      }
+    } catch (ownerError: any) {
+      console.error("❌ Lỗi khi kiểm tra owner:", ownerError);
+      return {
+        success: false,
+        isValid: false,
+        message: `⚠️ Văn bằng chưa được mint lên blockchain hoặc đã bị thu hồi! (Token ID: ${tokenId})`,
+      };
+    }
+
+    // ✅ Lấy dữ liệu thực tế từ blockchain để so sánh
+    const onChainDiploma = await contract.getDiploma(tokenId);
+    const onChainTokenURI = await contract.tokenURI(tokenId); // ✅ Lấy tokenURI riêng
+    
+    console.log("📋 Dữ liệu trên blockchain:", {
+      institutionCode: onChainDiploma.institutionCode,
+      serialNumber: onChainDiploma.serialNumber,
+      studentAddress: onChainDiploma.student, // ✅ Field tên là 'student'
+      issuerAddress: onChainDiploma.issuer,   // ✅ Field tên là 'issuer'
+      issueDate: Number(onChainDiploma.issueDate),
+      tokenURI: onChainTokenURI, // ✅ Lấy từ hàm tokenURI()
+    });
+
+    console.log("📋 Dữ liệu từ database:", {
+      institutionCode,
+      serialNumber,
+      studentAddress,
+      issuerAddress,
+      issueDate,
+      tokenURI,
+    });
+
+    // So sánh từng trường để tìm sự khác biệt
+    const differences: string[] = [];
+    if (onChainDiploma.institutionCode !== institutionCode) {
+      differences.push(`institutionCode: blockchain="${onChainDiploma.institutionCode}" vs db="${institutionCode}"`);
+    }
+    if (onChainDiploma.serialNumber !== serialNumber) {
+      differences.push(`serialNumber: blockchain="${onChainDiploma.serialNumber}" vs db="${serialNumber}"`);
+    }
+    if (onChainDiploma.student.toLowerCase() !== studentAddress.toLowerCase()) {
+      differences.push(`studentAddress: blockchain="${onChainDiploma.student}" vs db="${studentAddress}"`);
+    }
+    if (onChainDiploma.issuer.toLowerCase() !== issuerAddress.toLowerCase()) {
+      differences.push(`issuerAddress: blockchain="${onChainDiploma.issuer}" vs db="${issuerAddress}"`);
+    }
+    if (Number(onChainDiploma.issueDate) !== issueDate) {
+      differences.push(`issueDate: blockchain="${Number(onChainDiploma.issueDate)}" vs db="${issueDate}"`);
+    }
+    if (onChainTokenURI !== tokenURI) {
+      differences.push(`tokenURI: blockchain="${onChainTokenURI}" vs db="${tokenURI}"`);
+    }
+
+    if (differences.length > 0) {
+      console.error("❌ Phát hiện sự khác biệt:", differences);
+      return {
+        success: false,
+        isValid: false,
+        message: `⚠️ Phát hiện sự khác biệt: ${differences.join('; ')}`,
+      };
+    }
+
     // Gọi hàm verifyDiploma từ smart contract
     const isValid = await contract.verifyDiploma(
       tokenId,
@@ -324,7 +398,7 @@ export async function verifyDiplomaWithBlockchain(
       tokenURI
     );
 
-    console.log("✅ Kết quả xác thực:", isValid);
+    console.log("✅ Kết quả xác thực từ contract:", isValid);
 
     if (!isValid) {
       return {

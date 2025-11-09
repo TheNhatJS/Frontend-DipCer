@@ -2,20 +2,25 @@
 
 import NavLinks from './nav-link'
 import { HiLogout, HiHome } from 'react-icons/hi'
-import { FaUniversity } from 'react-icons/fa'
+import { FaUniversity, FaUserTie } from 'react-icons/fa'
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { logoutUser } from '@/lib/axios'
 import { toast } from 'sonner'
+import { canManageInstitution } from '@/lib/roleCheck'
 
-export default function SideNav({ institutionName }: { institutionName: string }) {
+export default function SideNav({ name }: { name: string }) {
     const { data: session } = useSession()
     const [issuerCode, setIssuerCode] = useState<string>('')
+    const [userRole, setUserRole] = useState<string>('')
 
     useEffect(() => {
         if (session?.user?.roleId) {
             setIssuerCode(session.user.roleId)
+        }
+        if (session?.user?.role) {
+            setUserRole(session.user.role)
         }
     }, [session])
 
@@ -30,27 +35,42 @@ export default function SideNav({ institutionName }: { institutionName: string }
         }
     }
 
+    const isIssuer = canManageInstitution(userRole);
+
     return (
         <div className="w-full md:w-86 h-full bg-gradient-to-b from-[#1A1D24] to-[#0F1115] text-white flex flex-col shadow-2xl border-r border-white/10">
             {/* Header Section */}
             <div className="p-6 border-b border-white/10">
                 {/* Welcome Message */}
                 <div className="mb-6">
-                    <p className="text-sm text-gray-400 mb-1">Xin chào 🖐️,</p>
+                    <p className="text-sm text-gray-400 mb-1">
+                        Xin chào {isIssuer ? '(Issuer)' : '(Delegate)'} 🖐️
+                    </p>
                     <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent break-words leading-tight">
-                        {institutionName}
+                        {name}
                     </h2>
                 </div>
 
                 {/* Institution Info Card */}
                 <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-sm border border-blue-500/20 rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-2">
-                        <FaUniversity className="text-blue-400 text-lg" />
-                        <p className="text-xs text-gray-400 font-semibold">Thông tin trường</p>
+                        {isIssuer ? (
+                            <FaUniversity className="text-blue-400 text-lg" />
+                        ) : (
+                            <FaUserTie className="text-purple-400 text-lg" />
+                        )}
+                        <p className="text-xs text-gray-400 font-semibold">
+                            {isIssuer ? 'Thông tin trường' : 'Thông tin chuyên viên'}
+                        </p>
                     </div>
-                    {issuerCode && (
+                    {issuerCode && isIssuer && (
                         <p className="text-sm text-blue-300 font-mono">
                             Mã trường: {issuerCode}
+                        </p>
+                    )}
+                    {!isIssuer && (
+                        <p className="text-sm text-purple-300">
+                            Mã trường: {session?.user?.code}
                         </p>
                     )}
                 </div>
@@ -68,7 +88,7 @@ export default function SideNav({ institutionName }: { institutionName: string }
 
             {/* Footer Section */}
             <div className="p-4 border-t border-white/10 space-y-3">
-                {/* Home Button */}
+                {/* Home Button - Quay về trang chủ website cho tất cả */}
                 <Link href="/">
                     <button className="w-full flex items-center justify-center gap-2 px-4 py-3 mb-1 rounded-xl bg-blue-600/10 border border-blue-500/30 text-blue-400 hover:bg-blue-600/20 hover:border-blue-500/50 transition-all duration-200 group">
                         <HiHome className="text-lg group-hover:scale-110 transition-transform" />

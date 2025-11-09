@@ -11,6 +11,8 @@ import {
   FaExclamationTriangle,
 } from "react-icons/fa";
 import axiosInstance from "@/lib/axios";
+import { useSession } from "next-auth/react";
+import { canManageInstitution } from "@/lib/roleCheck";
 
 type DelegateForm = {
   id: string;
@@ -27,10 +29,19 @@ export default function EditDelegatePage() {
   const router = useRouter();
   const params = useParams();
   const delegateId = params.id as string;
+  const { data: session } = useSession();
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+
+  // ⚠️ CHỈ ISSUER mới được chỉnh sửa delegate
+  useEffect(() => {
+    if (session && !canManageInstitution(session.user.role)) {
+      toast.error("Bạn không có quyền truy cập trang này!");
+      router.push("/");
+    }
+  }, [session, router]);
 
   const [delegate, setDelegate] = useState<DelegateForm>({
     id: "",

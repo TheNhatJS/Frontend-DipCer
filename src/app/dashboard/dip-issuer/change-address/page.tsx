@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { getCurrentWalletAddress, transferIssuerRole } from "@/lib/contract";
 import axios from "@/lib/axios";
 import { logoutUser } from "@/lib/axios";
+import { canManageInstitution } from "@/lib/roleCheck";
 
 interface IssuerInfo {
   code: string;
@@ -26,6 +27,13 @@ export default function IssuerSettingsPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
+    // ⚠️ CHỈ ISSUER mới được đổi địa chỉ ví
+    if (session && !canManageInstitution(session.user.role)) {
+      toast.error("Bạn không có quyền truy cập trang này!");
+      router.push("/");
+      return;
+    }
+
     if (session?.user?.roleId) {
       fetchIssuerInfo();
     }

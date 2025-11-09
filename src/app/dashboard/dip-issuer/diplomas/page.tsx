@@ -11,8 +11,12 @@ import {
 import { toast, Toaster } from "sonner";
 import axiosInstance from "@/lib/axios";
 import axios from "axios";
-import { revokeDiplomaOnBlockchain } from "@/lib/contract";
+import {
+  getCurrentWalletAddress,
+  revokeDiplomaOnBlockchain,
+} from "@/lib/contract";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 // Cấu trúc metadata từ IPFS
 interface DiplomaMetadata {
@@ -69,6 +73,7 @@ interface Diploma {
 
 export default function DiplomasPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [diplomas, setDiplomas] = useState<Diploma[]>([]);
   const [filteredDiplomas, setFilteredDiplomas] = useState<Diploma[]>([]);
   const [loading, setLoading] = useState(false);
@@ -235,6 +240,35 @@ export default function DiplomasPage() {
     try {
       setRevoking(true);
 
+      // Kiểm tra có institution code và wallet address trong session
+      if (!session?.user?.code || !session?.user?.address) {
+        toast.error(
+          "Không tìm thấy thông tin trường hoặc địa chỉ ví trong session"
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Bước 1: Kiểm tra địa chỉ ví hiện tại khớp với session
+      toast.info("🔍 Đang kiểm tra địa chỉ ví...");
+      const currentWallet = await getCurrentWalletAddress();
+
+      if (!currentWallet) {
+        toast.error("Không thể lấy địa chỉ ví. Vui lòng kết nối MetaMask");
+        setLoading(false);
+        return;
+      }
+
+      // So sánh địa chỉ ví (case-insensitive)
+      if (currentWallet.toLowerCase() !== session.user.address.toLowerCase()) {
+        toast.error(
+          `Địa chỉ ví không khớp!\nVí hiện tại: ${currentWallet}\nVí trong hệ thống: ${session.user.address}\nVui lòng chuyển sang đúng ví trong MetaMask`,
+          { duration: 8000 }
+        );
+        setLoading(false);
+        return;
+      }
+
       const result = await revokeDiplomaOnBlockchain(selectedDip.id);
 
       if (result.success) {
@@ -294,35 +328,16 @@ export default function DiplomasPage() {
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex-1 min-w-[200px]">
                 <label className="block text-sm mb-2 text-gray-300">
-                  Trạng thái
-                </label>
-                <select
-                  value={filterStatus}
-                  onChange={(e) =>
-                    setFilterStatus(
-                      e.target.value as "all" | "active" | "revoked"
-                    )
-                  }
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">Tất cả trạng thái</option>
-                  <option value="active">Còn hiệu lực</option>
-                  <option value="revoked">Đã thu hồi</option>
-                </select>
-              </div>
-
-              <div className="flex-1 min-w-[200px]">
-                <label className="block text-sm mb-2 text-gray-300">
                   Chuyên ngành
                 </label>
                 <select
                   value={filterFaculty}
                   onChange={(e) => setFilterFaculty(e.target.value)}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:text-black [&>option]:bg-white"
                 >
                   <option value="all">Tất cả chuyên ngành</option>
                   {faculties.map((faculty) => (
-                    <option key={faculty} value={faculty}>
+                    <option key={faculty} value={faculty} className="text-black bg-white">
                       {faculty}
                     </option>
                   ))}
@@ -794,46 +809,48 @@ export default function DiplomasPage() {
         )}
 
         {showDeleteModal && selectedDip && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-red-500/30 rounded-lg max-w-md w-full p-6 shadow-2xl">
-            <h2 className="text-xl font-bold mb-4 text-red-400">
-              ⚠️ Xác nhận thu hồi
-            </h2>
-            <p className="mb-6 text-gray-300">
-              Bạn có chắc chắn muốn thu hồi văn bằng{" "}
-              <strong className="text-white">{selectedDip.serialNumber}</strong>
-              ?
-              <br />
-              <span className="text-red-400">
-                Hành động này không thể hoàn tác!
-              </span>
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                disabled={revoking}
-                className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-white disabled:opacity-50 transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleRevoke}
-                disabled={revoking}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2 transition-colors"
-              >
-                {revoking ? (
-                  <>
-                    <FaSpinner className="animate-spin" />
-                    Đang thu hồi...
-                  </>
-                ) : (
-                  "Xác nhận thu hồi"
-                )}
-              </button>
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-red-500/30 rounded-lg max-w-md w-full p-6 shadow-2xl">
+              <h2 className="text-xl font-bold mb-4 text-red-400">
+                ⚠️ Xác nhận thu hồi
+              </h2>
+              <p className="mb-6 text-gray-300">
+                Bạn có chắc chắn muốn thu hồi văn bằng{" "}
+                <strong className="text-white">
+                  {selectedDip.serialNumber}
+                </strong>
+                ?
+                <br />
+                <span className="text-red-400">
+                  Hành động này không thể hoàn tác!
+                </span>
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={revoking}
+                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-white disabled:opacity-50 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleRevoke}
+                  disabled={revoking}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2 transition-colors"
+                >
+                  {revoking ? (
+                    <>
+                      <FaSpinner className="animate-spin" />
+                      Đang thu hồi...
+                    </>
+                  ) : (
+                    "Xác nhận thu hồi"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </div>
   );

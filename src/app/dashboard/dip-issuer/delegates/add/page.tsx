@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast, Toaster } from 'sonner'
 import { FaChalkboardTeacher, FaTrash, FaArrowLeft } from 'react-icons/fa'
 import axiosInstance from '@/lib/axios'
 import { useSession } from 'next-auth/react'
 import { approveDelegateOnChain, batchApproveDelegatesOnChain } from '@/lib/contract'
+import { canManageInstitution } from '@/lib/roleCheck'
 
 type DelegateForm = {
   id: string
@@ -23,6 +24,14 @@ export default function AddDelegatePage() {
   const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'single' | 'batch'>('single')
+  
+  // ⚠️ CHỈ ISSUER mới được thêm delegate
+  useEffect(() => {
+    if (session && !canManageInstitution(session.user.role)) {
+      toast.error("Bạn không có quyền truy cập trang này!");
+      router.push("/");
+    }
+  }, [session, router]);
   
   // Single delegate form
   const [delegate, setDelegate] = useState<DelegateForm>({

@@ -47,7 +47,7 @@ export default function LoginPage() {
     const session = await getSession();
     const role = session?.user?.role;
 
-    if (role === "STUDENT") router.push("/dashboard/student");
+    if (role === "DELEGATE") router.push("/dashboard/delegate");
     else if (role === "ISSUER") router.push("/dashboard/dip-issuer");
     else router.push("/auth/login");
   };

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { HiMenu, HiX } from 'react-icons/hi'
 import SideNav from './sidenav'
 
-export default function SideNavWrapper({ institutionName }: { institutionName: string }) {
+export default function SideNavWrapper({ name }: { name: string }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   return (
@@ -32,7 +32,7 @@ export default function SideNavWrapper({ institutionName }: { institutionName: s
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <SideNav institutionName={institutionName} />
+        <SideNav name={name} />
       </div>
     </>
   )
