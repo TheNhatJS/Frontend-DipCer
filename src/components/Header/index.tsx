@@ -3,7 +3,6 @@
 import { FaGraduationCap, FaWallet } from 'react-icons/fa'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useWallet } from '@/contexts/WalletContext'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { logoutUser } from '@/lib/axios'
@@ -11,7 +10,6 @@ import { toast } from 'sonner'
 
 export default function Header() {
   const [showMenu, setShowMenu] = useState(false)
-  const { address, connectWallet, disconnectWallet } = useWallet()
   const { data: session } = useSession()
   const router = useRouter()
 
@@ -55,22 +53,6 @@ export default function Header() {
 
 
       <div className="flex gap-2 items-center relative">
-        {/* Nút kết nối ví */}
-        <button
-          onClick={address ? disconnectWallet : connectWallet}
-          className=
-          {
-            `flex items-center gap-2 text-sm px-4 py-2 rounded-xl transition shadow hover:cursor-pointer 
-            ${address ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'}
-            `
-          }
-        >
-          <FaWallet />
-          {address
-            ? `${address.slice(0, 6)}...${address.slice(-4)}`
-            : 'Kết nối ví'}
-        </button>
-
         {displayName ? (
           <div className="relative">
             <button
