@@ -7,13 +7,13 @@ import Header from "@/components/Header";
 import SlideSelection from "@/components/Home/slide";
 import Features from "@/components/Home/feature";
 import Process from "@/components/Home/process";
+import IPFSSection from "@/components/Home/ipfs-section";
 import { toast, Toaster } from "sonner";
 import { getSession } from "next-auth/react";
 import axios from "axios";
 import axiosInstance from "@/lib/axios";
 import getIpfsUrlFromPinata from "./api/upload/image/utils";
 import { CONTRACT_INFO } from "@/lib/contractInfo";
-const { verifyDiplomaWithBlockchain } = await import("@/lib/contract");
 
 export default function Home() {
   const [serialNumber, setSerialNumber] = useState("");
@@ -22,6 +22,7 @@ export default function Home() {
   const [verificationStatus, setVerificationStatus] = useState<
     "valid" | "tampered" | null
   >(null);
+  const [verificationDetails, setVerificationDetails] = useState<string[]>([]);
 
   const searchSectionRef = useRef<HTMLDivElement>(null);
 
@@ -66,13 +67,17 @@ export default function Home() {
 
       const IPFSUrl = getIpfsUrlFromPinata(rawImageUrl);
 
-      // 4. Xác thực văn bằng với blockchain
-      toast.loading("Đang xác thực với blockchain...", { id: "search" });
+      // 4. Xác thực văn bằng với blockchain và IPFS
+      toast.loading("Đang xác thực với Blockchain & IPFS...", { id: "search" });
 
-      // ✅ Nếu delegate cấp phát thì dùng delegateAddress, ngược lại dùng issuerAddress
-      const actualIssuerAddress = diplomaFromDB.delegateAddress || diplomaFromDB.issuerAddress;
+      // Import contract function dynamically
+      const { verifyDiplomaWithBlockchain } = await import("@/lib/contract");
 
-      // ✅ Sử dụng issueDate từ blockchain (nguồn tin cậy)
+      // Nếu delegate cấp phát thì dùng delegateAddress, ngược lại dùng issuerAddress
+      const actualIssuerAddress =
+        diplomaFromDB.delegateAddress || diplomaFromDB.issuerAddress;
+
+      // Sử dụng issueDate từ blockchain (nguồn tin cậy) và thêm các trường metadata
       const verificationResult = await verifyDiplomaWithBlockchain({
         tokenId: diplomaFromDB.id,
         institutionCode: diplomaFromDB.issuerCode,
@@ -83,6 +88,12 @@ export default function Home() {
           new Date(diplomaFromDB.issuedAt).getTime() / 1000
         ),
         tokenURI: diplomaFromDB.tokenURI,
+        // Thêm các trường metadata để xác thực
+        studentID: diplomaFromDB.studentId,
+        studentName: diplomaFromDB.studentName,
+        gpa: diplomaFromDB.GPA,
+        faculty: diplomaFromDB.faculty,
+        studentClass: diplomaFromDB.studentClass,
       });
 
       console.log("🔐 Kết quả xác thực:", verificationResult);
@@ -90,10 +101,27 @@ export default function Home() {
       // 5. Set verification status
       if (!verificationResult.success || !verificationResult.isValid) {
         setVerificationStatus("tampered");
-        toast.error(verificationResult.message, { id: "search" });
+        setVerificationDetails(verificationResult.details || []);
+
+        // Hiển thị thông báo lỗi chi tiết
+        let errorMessage = verificationResult.message;
+        if (
+          verificationResult.details &&
+          verificationResult.details.length > 0
+        ) {
+          errorMessage += `\n\nChi tiết:\n${verificationResult.details.join(
+            "\n"
+          )}`;
+        }
+
+        toast.error(errorMessage, {
+          id: "search",
+          duration: 8000, // Hiển thị lâu hơn để đọc chi tiết
+        });
         // Still show the modal but with warning
       } else {
         setVerificationStatus("valid");
+        setVerificationDetails([]);
         toast.success("✅ Văn bằng hợp lệ!", { id: "search" });
       }
 
@@ -108,7 +136,7 @@ export default function Home() {
         dayOfBirth: diplomaFromDB.studentDayOfBirth,
         issuedAt: new Date(diplomaFromDB.issuedAt), // Database field là 'issuedAt'
         address: diplomaFromDB.studentAddress,
-        school: diplomaFromDB.issuerName,
+        school: metadata.institutionName,
         faculty: diplomaFromDB.faculty,
         image: IPFSUrl,
       });
@@ -139,6 +167,7 @@ export default function Home() {
       setDiplomaData(null);
       setShowModal(false);
       setVerificationStatus(null);
+      setVerificationDetails([]);
     }
   };
 
@@ -158,6 +187,9 @@ export default function Home() {
 
       {/* Features */}
       <Features />
+
+      {/* IPFS Section */}
+      <IPFSSection />
 
       {/* Search Section */}
       <div ref={searchSectionRef}>
@@ -261,41 +293,69 @@ export default function Home() {
                 </div>
 
                 {verificationStatus === "tampered" && (
-                  <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                    <p className="text-red-400 text-sm">
-                      ⚠️ <strong>Cảnh báo:</strong> Văn bằng này đã bị thay đổi
-                      hoặc không khớp với dữ liệu trên blockchain!
+                  <div className="mb-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg space-y-2">
+                    <p className="text-red-400 text-sm font-semibold">
+                      ⚠️ <strong>Cảnh báo:</strong> Dữ liệu database không khớp
+                      với blockchain/IPFS!
                     </p>
+                    <p className="text-red-300 text-xs">
+                      Hệ thống đã so sánh dữ liệu từ database với metadata lưu
+                      trữ trên
+                      <strong> IPFS (InterPlanetary File System)</strong> và
+                      phát hiện sự khác biệt.
+                    </p>
+                    {verificationDetails.length > 0 && (
+                      <div className="mt-2 p-2 bg-black/20 rounded text-xs">
+                        <p className="font-semibold text-red-300 mb-1">
+                          Chi tiết sự khác biệt (IPFS vs Database):
+                        </p>
+                        <ul className="list-disc list-inside space-y-1 text-red-200">
+                          {verificationDetails.map((detail, index) => (
+                            <li key={index} className="break-all">
+                              {detail}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {verificationStatus === "valid" && (
+                  <div className="mb-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <p className="text-green-400 text-xs">
+                      ✅ <strong>Xác thực thành công!</strong> Dữ liệu khớp hoàn
+                      toàn giữa:
+                    </p>
+                    <ul className="text-green-300 text-xs mt-2 space-y-1 list-disc list-inside">
+                      <li>Blockchain (Ethereum Sepolia)</li>
+                      <li>IPFS (InterPlanetary File System)</li>
+                      <li>Database (PostgreSQL)</li>
+                    </ul>
                   </div>
                 )}
 
                 <p>
-                  <span className="font-semibold text-white/80">
-                    � Số hiệu:
-                  </span>{" "}
+                  <span className="font-semibold text-white/80">Số hiệu:</span>{" "}
                   {diplomaData.serialNumber}
                 </p>
                 <p>
                   <span className="font-semibold text-white/80">
-                    📍 Mã trường:
+                    Mã trường:
                   </span>{" "}
                   {diplomaData.issuerCode}
                 </p>
                 <p>
-                  <span className="font-semibold text-white/80">
-                    🏫 Trường:
-                  </span>{" "}
+                  <span className="font-semibold text-white/80">Trường:</span>{" "}
                   {diplomaData.school}
                 </p>
                 <p>
-                  <span className="font-semibold text-white/80">
-                    �👤 Họ tên:
-                  </span>{" "}
+                  <span className="font-semibold text-white/80">Họ tên:</span>{" "}
                   {diplomaData.name}
                 </p>
                 <p>
                   <span className="font-semibold text-white/80">
-                    🎂 Ngày sinh:
+                    Ngày sinh:
                   </span>{" "}
                   {diplomaData.dayOfBirth
                     ? new Date(diplomaData.dayOfBirth).toLocaleDateString(
@@ -304,20 +364,18 @@ export default function Home() {
                     : "Không có"}
                 </p>
                 <p>
-                  <span className="font-semibold text-white/80">🏛️ Khoa:</span>{" "}
+                  <span className="font-semibold text-white/80">Khoa:</span>{" "}
                   {diplomaData.faculty}
                 </p>
                 <p>
-                  <span className="font-semibold text-white/80">
-                    📅 Ngày cấp:
-                  </span>{" "}
+                  <span className="font-semibold text-white/80">Ngày cấp:</span>{" "}
                   {diplomaData.issuedAt instanceof Date
                     ? diplomaData.issuedAt.toLocaleDateString("vi-VN")
                     : "Không rõ"}
                 </p>
                 <p>
                   <span className="font-semibold text-white/80">
-                    🏢 Đơn vị cấp:
+                    Đơn vị cấp:
                   </span>
                   <span className="break-all block text-gray-300">
                     {diplomaData.issuedBy}
@@ -325,7 +383,7 @@ export default function Home() {
                 </p>
                 <p>
                   <span className="font-semibold text-white/80">
-                    💼 Địa chỉ sở hữu:
+                    Địa chỉ sở hữu:
                   </span>
                   <span className="break-all block text-gray-300">
                     {diplomaData.address}
@@ -347,6 +405,7 @@ export default function Home() {
                   onClick={() => {
                     setShowModal(false);
                     setVerificationStatus(null);
+                    setVerificationDetails([]);
                   }}
                   className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm transition-all"
                 >

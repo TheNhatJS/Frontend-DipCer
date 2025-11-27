@@ -278,14 +278,21 @@ export async function verifyDiplomaWithBlockchain(
     issuerAddress: string;
     issueDate: number; // Unix timestamp in seconds
     tokenURI: string;
+    // Thêm các trường metadata để xác thực
+    studentID?: string;
+    studentName?: string;
+    gpa?: number;
+    faculty?: string;
+    studentClass?: string;
   }
 ): Promise<{
   success: boolean;
   message: string;
   isValid?: boolean;
+  details?: string[];
 }> {
   try {
-    const { tokenId, institutionCode, serialNumber, studentAddress, issuerAddress, issueDate, tokenURI } = params;
+    const { tokenId, institutionCode, serialNumber, studentAddress, issuerAddress, issueDate, tokenURI, studentID, studentName, gpa, faculty, studentClass } = params;
 
     // Validate parameters
     if (!tokenId || isNaN(tokenId)) {
@@ -310,7 +317,12 @@ export async function verifyDiplomaWithBlockchain(
       issuerAddress,
       issueDate,
       issueDateType: typeof issueDate,
-      tokenURI
+      tokenURI,
+      studentID,
+      studentName,
+      gpa,
+      faculty,
+      studentClass
     });
 
     // ✅ Kiểm tra xem token có tồn tại trên blockchain không
@@ -384,6 +396,81 @@ export async function verifyDiplomaWithBlockchain(
         success: false,
         isValid: false,
         message: `⚠️ Phát hiện sự khác biệt: ${differences.join('; ')}`,
+        details: differences,
+      };
+    }
+
+    // ✅ Bước bổ sung: Kiểm tra metadata từ IPFS (InterPlanetary File System)
+    // IPFS là hệ thống lưu trữ phi tập trung, đảm bảo dữ liệu không thể bị thay đổi
+    // Mỗi file có một CID (Content Identifier) duy nhất dựa trên hash của nội dung
+    try {
+      console.log("🌐 [IPFS] Đang lấy metadata từ IPFS (InterPlanetary File System)...");
+      console.log("📍 [IPFS] TokenURI từ blockchain:", onChainTokenURI);
+      const axios = (await import("axios")).default;
+      
+      // Convert IPFS URL to accessible URL via Pinata Gateway
+      let metadataURL = onChainTokenURI;
+      if (metadataURL.startsWith('ipfs://')) {
+        const cid = metadataURL.replace('ipfs://', '');
+        metadataURL = `https://gateway.pinata.cloud/ipfs/${cid}`;
+        console.log("🔗 [IPFS] Đã chuyển đổi sang Pinata Gateway:", metadataURL);
+        console.log("🔐 [IPFS] CID (Content Identifier):", cid);
+      }
+      
+      console.log("⏳ [IPFS] Đang tải metadata từ mạng IPFS...");
+      const metadataResponse = await axios.get(metadataURL);
+      const metadata = metadataResponse.data;
+      
+      console.log("✅ [IPFS] Đã tải thành công metadata từ IPFS!");
+      console.log("📦 [IPFS] Nội dung metadata:", metadata);
+      
+      const metadataDifferences: string[] = [];
+      
+      console.log("🔍 [IPFS] Đang so sánh metadata từ IPFS với dữ liệu database...");
+      
+      // So sánh các trường quan trọng trong metadata
+      if (studentID !== undefined && metadata.studentID !== studentID) {
+        metadataDifferences.push(`studentID: IPFS="${metadata.studentID}" vs DB="${studentID}"`);
+      }
+      
+      if (studentName !== undefined && metadata.studentName !== studentName) {
+        metadataDifferences.push(`studentName: IPFS="${metadata.studentName}" vs DB="${studentName}"`);
+      }
+      
+      if (gpa !== undefined && metadata.gpa !== gpa) {
+        metadataDifferences.push(`gpa: IPFS="${metadata.gpa}" vs DB="${gpa}"`);
+      }
+      
+      if (faculty !== undefined && metadata.faculty !== faculty) {
+        metadataDifferences.push(`faculty: IPFS="${metadata.faculty}" vs DB="${faculty}"`);
+      }
+      
+      if (studentClass !== undefined && metadata.class !== studentClass) {
+        metadataDifferences.push(`class: IPFS="${metadata.class}" vs DB="${studentClass}"`);
+      }
+      
+      if (metadata.institutionCode !== institutionCode) {
+        metadataDifferences.push(`institutionCode: IPFS="${metadata.institutionCode}" vs Expected="${institutionCode}"`);
+      }
+      
+      if (metadataDifferences.length > 0) {
+        console.error("❌ [IPFS] Phát hiện sự khác biệt giữa metadata trên IPFS và database:", metadataDifferences);
+        return {
+          success: false,
+          isValid: false,
+          message: `⚠️ Dữ liệu database không khớp với metadata trên IPFS! ${metadataDifferences.join('; ')}`,
+          details: [...differences, ...metadataDifferences],
+        };
+      }
+      
+      console.log("✅ [IPFS] Metadata trên IPFS khớp hoàn toàn với database!");
+    } catch (metadataError: any) {
+      console.error("❌ [IPFS] Lỗi khi lấy metadata từ IPFS:", metadataError);
+      return {
+        success: false,
+        isValid: false,
+        message: "⚠️ Không thể lấy metadata từ IPFS! Có thể mạng IPFS đang gặp sự cố hoặc CID không hợp lệ.",
+        details: [`IPFS Error: ${metadataError.message}`],
       };
     }
 
@@ -450,6 +537,65 @@ export async function revokeDiplomaOnBlockchain(tokenId: number) {
   } catch (error: any) {
     console.error("❌ Lỗi khi thu hồi văn bằng:", error);
     throw new Error(error.message || "Không thể thu hồi văn bằng");
+  }
+}
+
+/**
+ * Batch revoke multiple diplomas on blockchain
+ * @param tokenIds - Array of token IDs to revoke
+ * @returns Object containing success status and transaction hash
+ */
+export async function batchRevokeDiplomas(
+  tokenIds: number[]
+): Promise<{
+  success: boolean;
+  txHash?: string;
+  error?: string;
+}> {
+  try {
+    if (!tokenIds || tokenIds.length === 0) {
+      return {
+        success: false,
+        error: "Danh sách văn bằng rỗng",
+      };
+    }
+
+    console.log("🔄 Batch revoking diplomas...");
+    console.log("Token IDs:", tokenIds);
+
+    // Get contract instance
+    const { contract } = await getContractInstance();
+
+    // Call batch revoke function
+    console.log("📝 Sending batch revoke transaction...");
+    const tx = await contract.batchRevokeAndBurnDiploma(tokenIds);
+
+    console.log("⏳ Waiting for confirmation...", tx.hash);
+
+    // Wait for confirmation
+    const receipt = await tx.wait();
+
+    console.log("✅ Batch revoke successful!", receipt.hash);
+
+    return {
+      success: true,
+      txHash: receipt.hash,
+    };
+  } catch (error: any) {
+    console.error("❌ Error batch revoking diplomas:", error);
+
+    let errorMessage = "Lỗi không xác định khi thu hồi hàng loạt";
+
+    if (error.code === "ACTION_REJECTED") {
+      errorMessage = "Bạn đã từ chối giao dịch";
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    return {
+      success: false,
+      error: errorMessage,
+    };
   }
 }
 

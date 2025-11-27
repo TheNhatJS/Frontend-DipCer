@@ -38,7 +38,7 @@ export default function LoginPage() {
     }
 
     if (res?.error) {
-      toast.error("Đã xảy ra lỗi. Vui lòng thử lại sau.");
+      toast.error(res.error || "Đã xảy ra lỗi. Vui lòng thử lại sau.");
       setErrorMessage("Lỗi không xác định.");
       return;
     }

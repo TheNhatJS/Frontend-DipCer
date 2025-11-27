@@ -66,7 +66,7 @@ export default function Process() {
                             <h3 className="text-xl font-bold mb-3 text-center md:text-left">Tạo Draft văn bằng</h3>
                             <p className="text-gray-400 text-center md:text-left">
                                 Issuer hoặc Delegate nhập thông tin sinh viên và văn bằng, 
-                                sau đó upload ảnh văn bằng lên IPFS để lưu trữ phi tập trung.
+                                sau đó <strong className="text-purple-300">upload ảnh văn bằng lên IPFS</strong> để lưu trữ phi tập trung và bất biến.
                             </p>
                         </div>
                         <div className="md:w-1/2 md:order-1">
@@ -112,7 +112,8 @@ export default function Process() {
                             </div>
                             <h3 className="text-xl font-bold mb-3 text-center md:text-left">Mint NFT trên Blockchain</h3>
                             <p className="text-gray-400 text-center md:text-left">
-                                Sau khi hoàn tất draft, hệ thống gọi smart contract để mint NFT văn bằng trên Ethereum. 
+                                Sau khi hoàn tất draft, hệ thống <strong className="text-purple-300">upload metadata lên IPFS</strong>, 
+                                sau đó gọi smart contract để mint NFT văn bằng trên Ethereum với tokenURI trỏ đến IPFS. 
                                 Thông tin được lưu vĩnh viễn và không thể thay đổi.
                             </p>
                         </div>

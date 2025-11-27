@@ -1,66 +1,74 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { DiplomaDraft } from '@/types/diploma-draft'
+import { useState, useEffect } from "react";
+import { DiplomaDraft } from "@/types/diploma-draft";
 
 interface EditDraftModalProps {
-  draft: DiplomaDraft
-  onClose: () => void
-  onSave: (data: Partial<DiplomaDraft>) => Promise<void>
+  draft: DiplomaDraft;
+  onClose: () => void;
+  onSave: (data: Partial<DiplomaDraft>) => Promise<void>;
 }
 
-export default function EditDraftModal({ draft, onClose, onSave }: EditDraftModalProps) {
+export default function EditDraftModal({
+  draft,
+  onClose,
+  onSave,
+}: EditDraftModalProps) {
   const [formData, setFormData] = useState({
+    studentId: draft.studentId,
+    serialNumber: draft.serialNumber,
     studentName: draft.studentName,
     studentEmail: draft.studentEmail,
     studentPhone: draft.studentPhone,
-    studentDayOfBirth: draft.studentDayOfBirth.split('T')[0],
+    studentDayOfBirth: draft.studentDayOfBirth.split("T")[0],
     studentGender: draft.studentGender,
     studentAddress: draft.studentAddress,
     studentClass: draft.studentClass,
     faculty: draft.faculty,
     GPA: draft.GPA,
-  })
-  const [loading, setLoading] = useState(false)
+  });
+  const [loading, setLoading] = useState(false);
 
   const calculateClassification = (gpa: number) => {
-    if (gpa >= 3.6) return 'EXCELLENT'
-    if (gpa >= 3.2) return 'GOOD'
-    if (gpa >= 2.5) return 'CREDIT'
-    if (gpa >= 2.0) return 'AVERAGE'
-    return 'FAIL'
-  }
+    if (gpa >= 3.6) return "EXCELLENT";
+    if (gpa >= 3.2) return "GOOD";
+    if (gpa >= 2.5) return "CREDIT";
+    if (gpa >= 2.0) return "AVERAGE";
+    return "FAIL";
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
     try {
       const updateData: any = {
         ...formData,
         studentDayOfBirth: new Date(formData.studentDayOfBirth).toISOString(),
-      }
+      };
 
       // Recalculate classification if GPA changed
       if (formData.GPA !== draft.GPA) {
-        updateData.classification = calculateClassification(formData.GPA)
+        updateData.classification = calculateClassification(formData.GPA);
       }
 
-      await onSave(updateData)
+      await onSave(updateData);
     } catch (error) {
-      console.error('Error saving draft:', error)
+      console.error("Error saving draft:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [name]: name === 'GPA' ? parseFloat(value) : value,
-    }))
-  }
+      [name]: name === "GPA" ? parseFloat(value) : value,
+    }));
+  };
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -84,25 +92,29 @@ export default function EditDraftModal({ draft, onClose, onSave }: EditDraftModa
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-gray-300 mb-2">
-                MSSV <span className="text-gray-500">(Không thể sửa)</span>
+                MSSV
               </label>
               <input
                 type="text"
-                value={draft.studentId}
-                disabled
-                className="w-full px-4 py-2 rounded-lg bg-gray-700/50 border border-gray-600 text-gray-400 cursor-not-allowed"
+                name="studentId"
+                value={formData.studentId}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg bg-[#292C33]/70 border border-gray-600 text-white focus:border-blue-500 focus:outline-none"
               />
             </div>
 
             <div>
               <label className="block text-sm text-gray-300 mb-2">
-                Số hiệu văn bằng <span className="text-gray-500">(Không thể sửa)</span>
+                Số hiệu văn bằng                
               </label>
               <input
                 type="text"
-                value={draft.serialNumber}
-                disabled
-                className="w-full px-4 py-2 rounded-lg bg-gray-700/50 border border-gray-600 text-gray-400 cursor-not-allowed"
+                name="serialNumber"
+                value={formData.serialNumber}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg bg-[#292C33]/70 border border-gray-600 text-white focus:border-blue-500 focus:outline-none"
               />
             </div>
 
@@ -237,12 +249,16 @@ export default function EditDraftModal({ draft, onClose, onSave }: EditDraftModa
               />
               {formData.GPA && (
                 <p className="text-xs text-gray-400 mt-1">
-                  💡 Xếp loại: {
-                    formData.GPA >= 3.6 ? '🏆 Xuất sắc' :
-                    formData.GPA >= 3.2 ? '🥇 Giỏi' :
-                    formData.GPA >= 2.5 ? '🥈 Khá' :
-                    formData.GPA >= 2.0 ? '🥉 Trung bình' : '❌ Yếu'
-                  }
+                  💡 Xếp loại:{" "}
+                  {formData.GPA >= 3.6
+                    ? "🏆 Xuất sắc"
+                    : formData.GPA >= 3.2
+                    ? "🥇 Giỏi"
+                    : formData.GPA >= 2.5
+                    ? "🥈 Khá"
+                    : formData.GPA >= 2.0
+                    ? "🥉 Trung bình"
+                    : "❌ Yếu"}
                 </p>
               )}
             </div>
@@ -263,11 +279,11 @@ export default function EditDraftModal({ draft, onClose, onSave }: EditDraftModa
               disabled={loading}
               className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:scale-105 rounded-lg font-semibold transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? '⏳ Đang lưu...' : '💾 Lưu thay đổi'}
+              {loading ? "⏳ Đang lưu..." : "💾 Lưu thay đổi"}
             </button>
           </div>
         </form>
       </div>
     </div>
-  )
+  );
 }

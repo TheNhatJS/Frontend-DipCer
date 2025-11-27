@@ -14,6 +14,7 @@ import axios from "axios";
 import {
   getCurrentWalletAddress,
   revokeDiplomaOnBlockchain,
+  batchRevokeDiplomas,
 } from "@/lib/contract";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -31,22 +32,6 @@ interface DiplomaMetadata {
   issueDate?: string;
   institutionName?: string;
   institutionCode?: string;
-}
-
-// Cấu trúc Student từ database
-interface Student {
-  id: number;
-  studentId: string;
-  name: string;
-  email: string;
-  dateOfBirth: string;
-  gender: string;
-  phone: string;
-  address: string;
-  walletAddress: string;
-  nameMajor: string;
-  class: string;
-  profileImage?: string;
 }
 
 // Cấu trúc diploma từ database
@@ -67,7 +52,6 @@ interface Diploma {
   classification: string;
   isRevoked: boolean;
   createdAt: string;
-  student?: Student;
   metadata?: DiplomaMetadata;
 }
 
@@ -89,9 +73,43 @@ export default function DiplomasPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [batchRevokeMode, setBatchRevokeMode] = useState(false);
+  const [selectedDiplomas, setSelectedDiplomas] = useState<number[]>([]);
+  const [showBatchRevokeModal, setShowBatchRevokeModal] = useState(false);
 
   // Lấy danh sách faculty unique
   const faculties = Array.from(new Set(diplomas.map((d) => d.faculty)));
+
+  // Helper functions for batch revoke
+  const toggleSelectDiploma = (diplomaId: number) => {
+    setSelectedDiplomas((prev) =>
+      prev.includes(diplomaId)
+        ? prev.filter((id) => id !== diplomaId)
+        : [...prev, diplomaId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    const selectableIds = currentDiplomas
+      .filter((d) => !d.isRevoked)
+      .map((d) => d.id);
+    
+    if (selectedDiplomas.length === selectableIds.length) {
+      setSelectedDiplomas([]);
+    } else {
+      setSelectedDiplomas(selectableIds);
+    }
+  };
+
+  const handleBatchRevokeClick = () => {
+    setBatchRevokeMode(true);
+    setSelectedDiplomas([]);
+  };
+
+  const handleCancelBatchRevoke = () => {
+    setBatchRevokeMode(false);
+    setSelectedDiplomas([]);
+  };
 
   // Helper function để fetch metadata từ IPFS
   const fetchMetadataFromIPFS = async (
@@ -144,53 +162,19 @@ export default function DiplomasPage() {
     }
   };
 
-  const fetchStudentInfo = async (
-    studentId: string
-  ): Promise<Student | null> => {
-    try {
-      const response = await axiosInstance.get(`/students/${studentId}`);
-      // Backend có thể trả về { data: student } hoặc trực tiếp student object
-      return response.data.data || response.data;
-    } catch (error: any) {
-      console.error("❌ Lỗi khi lấy thông tin sinh viên:", error);
-      // Không hiển thị toast error để không làm phiền user
-      return null;
-    }
-  };
-
   const openDetailModal = async (diploma: Diploma) => {
     setSelectedDip(diploma);
     setShowDetailModal(true);
 
-    // Fetch student info và metadata song song
-    const promises = [];
-
-    if (!diploma.student) {
-      promises.push(
-        fetchStudentInfo(diploma.studentId).then((studentInfo) => {
-          if (studentInfo) {
-            setSelectedDip((prev) =>
-              prev ? { ...prev, student: studentInfo } : prev
-            );
-          }
-        })
-      );
-    }
-
+    // Fetch metadata từ IPFS nếu chưa có
     if (!diploma.metadata && diploma.tokenURI) {
-      promises.push(
-        fetchMetadataFromIPFS(diploma.tokenURI).then((metadata) => {
-          if (metadata) {
-            setSelectedDip((prev) =>
-              prev ? { ...prev, metadata: metadata } : prev
-            );
-          }
-        })
-      );
+      const metadata = await fetchMetadataFromIPFS(diploma.tokenURI);
+      if (metadata) {
+        setSelectedDip((prev) =>
+          prev ? { ...prev, metadata: metadata } : prev
+        );
+      }
     }
-
-    // Chờ tất cả promises hoàn thành
-    await Promise.all(promises);
   };
 
   useEffect(() => {
@@ -287,14 +271,91 @@ export default function DiplomasPage() {
     }
   };
 
+  const handleBatchRevoke = async () => {
+    if (selectedDiplomas.length === 0) return;
+
+    try {
+      setRevoking(true);
+
+      // Kiểm tra có institution code và wallet address trong session
+      if (!session?.user?.code || !session?.user?.address) {
+        toast.error(
+          "Không tìm thấy thông tin trường hoặc địa chỉ ví trong session"
+        );
+        return;
+      }
+
+      // Kiểm tra địa chỉ ví hiện tại khớp với session
+      toast.info("🔍 Đang kiểm tra địa chỉ ví...");
+      const currentWallet = await getCurrentWalletAddress();
+
+      if (!currentWallet) {
+        toast.error("Không thể lấy địa chỉ ví. Vui lòng kết nối MetaMask");
+        return;
+      }
+
+      if (currentWallet.toLowerCase() !== session.user.address.toLowerCase()) {
+        toast.error(
+          `Địa chỉ ví không khớp!\nVí hiện tại: ${currentWallet}\nVí trong hệ thống: ${session.user.address}\nVui lòng chuyển sang đúng ví trong MetaMask`,
+          { duration: 8000 }
+        );
+        return;
+      }
+
+      toast.info(`⛓️ Đang thu hồi ${selectedDiplomas.length} văn bằng trên blockchain...`);
+
+      // Batch revoke on blockchain
+      const result = await batchRevokeDiplomas(selectedDiplomas);
+
+      if (!result.success) {
+        toast.error(result.error || "Lỗi khi thu hồi văn bằng trên blockchain");
+        return;
+      }
+
+      toast.success("✅ Đã thu hồi trên blockchain!");
+      toast.info("💾 Đang cập nhật database...");
+
+      // Update database for each diploma
+      await Promise.all(
+        selectedDiplomas.map((id) =>
+          axiosInstance.patch(`/diplomas/${id}/revoke`)
+        )
+      );
+
+      toast.success(`🎉 Đã thu hồi ${selectedDiplomas.length} văn bằng thành công!`);
+      
+      setShowBatchRevokeModal(false);
+      setBatchRevokeMode(false);
+      setSelectedDiplomas([]);
+      await fetchDiplomasFromDB();
+    } catch (error: any) {
+      console.error("Lỗi batch revoke:", error);
+      toast.error(error.message || "Lỗi khi thu hồi văn bằng hàng loạt!");
+    } finally {
+      setRevoking(false);
+    }
+  };
+
   return (
     <div className="min-h-screen text-white px-6 py-10">
       <Toaster position="top-right" richColors />
 
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-2">
-          Danh sách văn bằng đã cấp
-        </h1>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+            Danh sách văn bằng đã cấp
+          </h1>
+          
+          {!batchRevokeMode && (
+            <button
+              onClick={handleBatchRevokeClick}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl font-semibold transition shadow-lg"
+            >
+              <FaCheckCircle />
+              Thu hồi hàng loạt
+            </button>
+          )}
+        </div>
 
         {/* Search & Filter Button */}
         <div className="mb-6 flex gap-4">
@@ -357,6 +418,48 @@ export default function DiplomasPage() {
           </div>
         )}
 
+        {/* Batch Revoke Mode Controls */}
+        {batchRevokeMode && (
+          <div className="mb-4 bg-gradient-to-r from-red-600/20 to-red-700/20 border border-red-500/50 rounded-xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedDiplomas.length > 0 &&
+                      selectedDiplomas.length ===
+                        currentDiplomas.filter((d) => !d.isRevoked).length
+                    }
+                    onChange={toggleSelectAll}
+                    className="w-5 h-5 rounded border-2 border-red-400 bg-white/10 checked:bg-red-600 focus:ring-2 focus:ring-red-500"
+                  />
+                  <span className="font-medium text-white">
+                    Chọn tất cả ({selectedDiplomas.length} đã chọn)
+                  </span>
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowBatchRevokeModal(true)}
+                  disabled={selectedDiplomas.length === 0}
+                  className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-lg font-semibold transition flex items-center gap-2"
+                >
+                  <FaCheckCircle />
+                  Thu hồi ({selectedDiplomas.length})
+                </button>
+                <button
+                  onClick={handleCancelBatchRevoke}
+                  className="px-6 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-semibold transition"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Stats & Items per page */}
         <div className="mb-4 flex items-center justify-between">
           <p className="text-gray-400 text-sm">
@@ -403,7 +506,11 @@ export default function DiplomasPage() {
               {currentDiplomas.map((diploma) => (
                 <div
                   key={diploma.id}
-                  className="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg overflow-hidden hover:border-blue-500/50 transition-all hover:shadow-lg hover:shadow-blue-500/20"
+                  className={`bg-white/5 backdrop-blur-md border rounded-lg overflow-hidden transition-all hover:shadow-lg ${
+                    batchRevokeMode && selectedDiplomas.includes(diploma.id)
+                      ? "border-red-500 shadow-lg shadow-red-500/20"
+                      : "border-white/10 hover:border-blue-500/50 hover:shadow-blue-500/20"
+                  }`}
                 >
                   {/* Ảnh văn bằng */}
                   <div className="aspect-video bg-gradient-to-br from-blue-900/50 to-purple-900/50 relative">
@@ -423,6 +530,27 @@ export default function DiplomasPage() {
                         <span className="text-white font-bold text-xl">
                           ĐÃ THU HỒI
                         </span>
+                      </div>
+                    )}
+                    {/* Checkbox overlay in batch revoke mode */}
+                    {batchRevokeMode && !diploma.isRevoked && (
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelectDiploma(diploma.id);
+                        }}
+                        className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer hover:bg-black/50 transition"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedDiplomas.includes(diploma.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            toggleSelectDiploma(diploma.id);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-8 h-8 rounded border-2 border-white bg-white/20 checked:bg-red-600 cursor-pointer pointer-events-none"
+                        />
                       </div>
                     )}
                   </div>
@@ -468,25 +596,39 @@ export default function DiplomasPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openDetailModal(diploma)}
-                        className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Chi tiết
-                      </button>
-                      {!diploma.isRevoked && (
+                    {!batchRevokeMode && (
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => {
-                            setSelectedDip(diploma);
-                            setShowDeleteModal(true);
-                          }}
-                          className="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition-colors"
+                          onClick={() => openDetailModal(diploma)}
+                          className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
                         >
-                          Thu hồi
+                          Chi tiết
                         </button>
-                      )}
-                    </div>
+                        {!diploma.isRevoked && (
+                          <button
+                            onClick={() => {
+                              setSelectedDip(diploma);
+                              setShowDeleteModal(true);
+                            }}
+                            className="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            Thu hồi
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {/* Batch revoke mode indicator */}
+                    {batchRevokeMode && (
+                      <div className="text-center py-2">
+                        {diploma.isRevoked ? (
+                          <span className="text-red-400 text-sm">Đã thu hồi</span>
+                        ) : selectedDiplomas.includes(diploma.id) ? (
+                          <span className="text-red-400 text-sm font-medium">✓ Đã chọn</span>
+                        ) : (
+                          <span className="text-gray-400 text-sm">Nhấn để chọn</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -580,80 +722,50 @@ export default function DiplomasPage() {
                       <FaCheckCircle />
                       Thông tin sinh viên
                     </h3>
-                    {selectedDip.student ? (
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">MSSV:</span>
-                          <span className="font-medium text-white text-right">
-                            {selectedDip.student.id}
-                          </span>
-                        </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">MSSV:</span>
+                        <span className="font-medium text-white text-right">
+                          {selectedDip.studentId}
+                        </span>
+                      </div>
+                      {selectedDip.metadata?.studentName && (
                         <div className="flex justify-between">
                           <span className="text-gray-400">Họ tên:</span>
                           <span className="font-medium text-white text-right">
-                            {selectedDip.student.name}
+                            {selectedDip.metadata.studentName}
                           </span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Email:</span>
-                          <span className="font-medium text-white text-right">
-                            {selectedDip.student.email}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Ngày sinh:</span>
-                          <span className="font-medium text-white text-right">
-                            {selectedDip.student.dateOfBirth
-                              ? new Date(
-                                  selectedDip.student.dateOfBirth
-                                ).toLocaleDateString("vi-VN")
-                              : "N/A"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Giới tính:</span>
-                          <span className="font-medium text-white text-right">
-                            {selectedDip.student.gender}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">SĐT:</span>
-                          <span className="font-medium text-white text-right">
-                            {selectedDip.student.phone}
-                          </span>
-                        </div>
+                      )}
+                      {selectedDip.metadata?.class && (
                         <div className="flex justify-between">
                           <span className="text-gray-400">Lớp:</span>
                           <span className="font-medium text-white text-right">
-                            {selectedDip.student.class}
+                            {selectedDip.metadata.class}
                           </span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Khoa:</span>
-                          <span className="font-medium text-white text-right">
-                            {selectedDip.student.nameMajor}
-                          </span>
-                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Khoa:</span>
+                        <span className="font-medium text-white text-right">
+                          {selectedDip.metadata?.faculty || selectedDip.faculty}
+                        </span>
                       </div>
-                    ) : (
-                      <div className="space-y-2 text-sm">
+                      {selectedDip.metadata?.institutionName && (
                         <div className="flex justify-between">
-                          <span className="text-gray-400">MSSV:</span>
+                          <span className="text-gray-400">Trường:</span>
                           <span className="font-medium text-white text-right">
-                            {selectedDip.studentId}
+                            {selectedDip.metadata.institutionName}
                           </span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Khoa:</span>
-                          <span className="font-medium text-white text-right">
-                            {selectedDip.faculty}
-                          </span>
-                        </div>
-                        <div className="text-center py-4 text-gray-500 text-sm">
-                          Thông tin chi tiết không khả dụng
-                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Địa chỉ ví:</span>
+                        <span className="font-mono text-xs text-white text-right break-all">
+                          {selectedDip.studentAddress.slice(0, 6)}...{selectedDip.studentAddress.slice(-4)}
+                        </span>
                       </div>
-                    )}
+                    </div>
                   </div>
 
                   {/* Cột 2: Thông tin văn bằng */}
@@ -803,6 +915,61 @@ export default function DiplomasPage() {
                     Thu hồi văn bằng
                   </button>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Batch Revoke Modal */}
+        {showBatchRevokeModal && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-red-500/30 rounded-lg max-w-md w-full p-6 shadow-2xl">
+              <h2 className="text-xl font-bold mb-4 text-red-400">
+                ⚠️ Xác nhận thu hồi hàng loạt
+              </h2>
+              <p className="mb-6 text-gray-300">
+                Bạn có chắc chắn muốn thu hồi{" "}
+                <strong className="text-white">
+                  {selectedDiplomas.length} văn bằng
+                </strong>?
+                <br />
+                <span className="text-red-400">
+                  Hành động này không thể hoàn tác!
+                </span>
+              </p>
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4 max-h-40 overflow-y-auto">
+                <p className="text-sm text-gray-400 mb-2">Danh sách văn bằng sẽ thu hồi:</p>
+                {selectedDiplomas.map((id) => {
+                  const diploma = diplomas.find((d) => d.id === id);
+                  return (
+                    <div key={id} className="text-sm text-white py-1">
+                      • Token ID: {id} - {diploma?.serialNumber}
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowBatchRevokeModal(false)}
+                  disabled={revoking}
+                  className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-white disabled:opacity-50 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleBatchRevoke}
+                  disabled={revoking}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 flex items-center gap-2 transition-colors"
+                >
+                  {revoking ? (
+                    <>
+                      <FaSpinner className="animate-spin" />
+                      Đang thu hồi...
+                    </>
+                  ) : (
+                    "Xác nhận thu hồi"
+                  )}
+                </button>
               </div>
             </div>
           </div>

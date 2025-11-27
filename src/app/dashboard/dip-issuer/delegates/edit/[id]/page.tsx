@@ -22,7 +22,6 @@ type DelegateForm = {
   dayOfBirth: string;
   gender: string;
   phone: string;
-  faculty: string;
 };
 
 export default function EditDelegatePage() {
@@ -51,7 +50,6 @@ export default function EditDelegatePage() {
     dayOfBirth: "",
     gender: "Nam",
     phone: "",
-    faculty: "",
   });
 
   const [originalDelegate, setOriginalDelegate] = useState<DelegateForm | null>(
@@ -132,7 +130,6 @@ export default function EditDelegatePage() {
         delegate.name !== originalDelegate?.name ||
         delegate.email !== originalDelegate?.email ||
         delegate.phone !== originalDelegate?.phone ||
-        delegate.faculty !== originalDelegate?.faculty ||
         delegate.dayOfBirth !== originalDelegate?.dayOfBirth ||
         delegate.gender !== originalDelegate?.gender ||
         delegate.address !== originalDelegate?.address;
@@ -153,7 +150,6 @@ export default function EditDelegatePage() {
         name: delegate.name,
         email: delegate.email,
         phone: delegate.phone,
-        faculty: delegate.faculty,
         dayOfBirth: delegate.dayOfBirth, // Giữ nguyên format YYYY-MM-DD
         gender: genderApiMap[delegate.gender] || delegate.gender,
         addressWallet: delegate.address,
@@ -196,7 +192,6 @@ export default function EditDelegatePage() {
       delegate.name !== originalDelegate?.name ||
       delegate.email !== originalDelegate?.email ||
       delegate.phone !== originalDelegate?.phone ||
-      delegate.faculty !== originalDelegate?.faculty ||
       delegate.dayOfBirth !== originalDelegate?.dayOfBirth ||
       delegate.gender !== originalDelegate?.gender ||
       delegate.address !== originalDelegate?.address;
@@ -222,7 +217,6 @@ export default function EditDelegatePage() {
     (delegate.name !== originalDelegate.name ||
       delegate.email !== originalDelegate.email ||
       delegate.phone !== originalDelegate.phone ||
-      delegate.faculty !== originalDelegate.faculty ||
       delegate.dayOfBirth !== originalDelegate.dayOfBirth ||
       delegate.gender !== originalDelegate.gender ||
       delegate.address !== originalDelegate.address);
@@ -370,23 +364,6 @@ export default function EditDelegatePage() {
                   Nữ
                 </option>
               </select>
-            </div>
-
-            {/* Faculty */}
-            <div className="md:col-span-2">
-              <label className="block mb-2 text-sm font-medium text-gray-300">
-                Khoa *
-              </label>
-              <input
-                type="text"
-                required
-                value={delegate.faculty}
-                onChange={(e) =>
-                  setDelegate({ ...delegate, faculty: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-                placeholder="Công nghệ thông tin"
-              />
             </div>
 
             {/* Wallet Address */}

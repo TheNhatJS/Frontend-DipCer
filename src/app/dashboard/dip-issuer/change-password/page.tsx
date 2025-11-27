@@ -112,12 +112,7 @@ export default function ChangePasswordPage() {
       <div className="max-w-2xl w-full mx-auto">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={handleBack}
-            className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition"
-          >
-            <HiArrowLeft className="text-2xl text-white" />
-          </button>
+          
           <div>
             <h1 className="text-3xl font-bold text-white">Đổi mật khẩu</h1>
             <p className="text-gray-400 mt-1">

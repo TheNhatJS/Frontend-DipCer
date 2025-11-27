@@ -169,7 +169,7 @@ export default function UploadImagesStep({
                 .map((draft) => (
                   <p key={draft.id} className="text-xs text-gray-400">
                     • <span className="text-yellow-300">{draft.studentId}</span> hoặc{' '}
-                    <span className="text-yellow-300">{draft.serialNumber}</span> - {draft.studentName}
+                    <span className="text-yellow-300">{draft.serialNumber}</span>
                   </p>
                 ))}
             </div>

@@ -126,31 +126,31 @@ export default function IssuerSettingsPage() {
 
       // Step 3: Đăng xuất và yêu cầu đăng nhập lại
       toast.info("🔄 Đang đăng xuất...");
-      
+
       // Xóa refresh token khỏi database
       try {
         await logoutUser();
       } catch (error) {
-        console.error('Logout error:', error);
+        console.error("Logout error:", error);
       }
 
       // Hiển thị thông báo trước khi đăng xuất
       toast.success("✅ Chuyển đổi địa chỉ ví thành công!");
-      
+
       setTimeout(async () => {
         toast.info("📱 Vui lòng đăng nhập lại với địa chỉ ví mới!", {
           duration: 5000,
         });
-        
+
         // Đăng xuất sau 2 giây
         setTimeout(async () => {
-          await signOut({ 
+          await signOut({
             redirect: true,
-            callbackUrl: '/login?message=Vui lòng đăng nhập lại với địa chỉ ví mới' 
+            callbackUrl:
+              "/login?message=Vui lòng đăng nhập lại với địa chỉ ví mới",
           });
         }, 2000);
       }, 1000);
-
     } catch (error: any) {
       console.error("Error changing wallet:", error);
       toast.error(

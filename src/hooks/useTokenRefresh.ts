@@ -12,23 +12,23 @@ export function useTokenRefresh() {
 
   console.log("🔵 [useTokenRefresh] Hook initialized");
 
-  // ✅ Update axios session mỗi khi NextAuth session thay đổi
-  useEffect(() => {
-    console.log("🔵 [useTokenRefresh Effect 1] Running - Session changed");
-    console.log("🔵 [useTokenRefresh Effect 1] Session:", {
-      hasSession: !!session,
-      email: session?.user?.email,
-      hasAccessToken: !!session?.access_token,
-      hasRefreshToken: !!session?.refresh_token,
-    });
+  // // ✅ Update axios session mỗi khi NextAuth session thay đổi
+  // useEffect(() => {
+  //   console.log("🔵 [useTokenRefresh Effect 1] Running - Session changed");
+  //   console.log("🔵 [useTokenRefresh Effect 1] Session:", {
+  //     hasSession: !!session,
+  //     email: session?.user?.email,
+  //     hasAccessToken: !!session?.access_token,
+  //     hasRefreshToken: !!session?.refresh_token,
+  //   });
 
-    if (session) {
-      console.log("🔵 [useTokenRefresh Effect 1] Calling updateAxiosSession()");
-      updateAxiosSession(session);
-    } else {
-      console.log("⚠️ [useTokenRefresh Effect 1] No session available");
-    }
-  }, [session]);
+  //   if (session) {
+  //     console.log("🔵 [useTokenRefresh Effect 1] Calling updateAxiosSession()");
+  //     updateAxiosSession(session);
+  //   } else {
+  //     console.log("⚠️ [useTokenRefresh Effect 1] No session available");
+  //   }
+  // }, [session]);
 
   // ✅ Lắng nghe event refresh token
   useEffect(() => {
