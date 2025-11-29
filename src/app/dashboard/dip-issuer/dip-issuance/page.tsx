@@ -532,8 +532,14 @@ export default function IssueCertificatePage() {
 
       {/* Upload Excel Modal */}
       {showUploadModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-white/10 rounded-2xl shadow-2xl max-w-2xl w-full p-8">
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowUploadModal(false)}
+        >
+          <div 
+            className="bg-slate-800 border border-white/10 rounded-2xl shadow-2xl max-w-2xl w-full p-8"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
                 Upload Excel

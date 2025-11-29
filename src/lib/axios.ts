@@ -205,7 +205,7 @@ axiosInstance.interceptors.response.use(
 );
 
 // Hàm logout - Xóa refresh token khỏi database
-export const logoutUser = async () => {
+export const logoutUser = async (callbackUrl: string = "/auth/login") => {
   try {
     if (cachedSession?.refresh_token) {
       // Gọi API logout để xóa refresh token khỏi DB
@@ -220,7 +220,7 @@ export const logoutUser = async () => {
     // Clear cached session
     cachedSession = null;
     // Luôn signOut dù API có lỗi hay không
-    await signOut({ callbackUrl: "/auth/login" });
+    await signOut({ callbackUrl });
   }
 };
 

@@ -287,8 +287,14 @@ export default function IssuerSettingsPage() {
 
         {/* Confirmation Modal */}
         {showConfirmModal && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-800 rounded-2xl border border-red-500/50 max-w-md w-full p-8">
+          <div 
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowConfirmModal(false)}
+          >
+            <div 
+              className="bg-slate-800 rounded-2xl border border-red-500/50 max-w-md w-full p-8"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="text-center mb-6">
                 <div className="text-6xl mb-4">⚠️</div>
                 <h2 className="text-2xl font-bold text-red-400 mb-2">

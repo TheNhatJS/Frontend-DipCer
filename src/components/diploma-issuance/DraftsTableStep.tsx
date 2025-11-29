@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DiplomaDraft } from "@/types/diploma-draft";
 import EditDraftModal from "./EditDraftModal";
+import DeleteDraftModal from "@/components/diploma-issuance/DeleteDraftModal";
 import { toast } from "sonner";
 
 interface DraftsTableStepProps {
@@ -45,9 +46,6 @@ export default function DraftsTableStep({
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa bản nháp này?")) return;
-
-    setDeletingId(id);
     try {
       await onDelete(id);
       toast.success("Xóa bản nháp thành công!");
@@ -62,23 +60,23 @@ export default function DraftsTableStep({
   const getClassificationBadge = (classification: string) => {
     const badges: Record<string, { label: string; color: string }> = {
       EXCELLENT: {
-        label: "🏆 Xuất sắc",
+        label: "Xuất sắc",
         color: "bg-purple-500/20 text-purple-300 border-purple-500/50",
       },
       GOOD: {
-        label: "🥇 Giỏi",
+        label: "Giỏi",
         color: "bg-yellow-500/20 text-yellow-300 border-yellow-500/50",
       },
       CREDIT: {
-        label: "🥈 Khá",
+        label: "Khá",
         color: "bg-blue-500/20 text-blue-300 border-blue-500/50",
       },
       AVERAGE: {
-        label: "🥉 TB",
+        label: "TB",
         color: "bg-green-500/20 text-green-300 border-green-500/50",
       },
       FAIL: {
-        label: "❌ Yếu",
+        label: "Yếu",
         color: "bg-red-500/20 text-red-300 border-red-500/50",
       },
     };
@@ -116,7 +114,6 @@ export default function DraftsTableStep({
               onClick={onRefresh}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-semibold transition-colors inline-flex items-center gap-2"
             >
-              <span>🔄</span>
               <span>Tải lại</span>
             </button>
           </div>
@@ -158,17 +155,17 @@ export default function DraftsTableStep({
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">STT</th>
                   <th className="px-4 py-3 text-left font-semibold">MSSV</th>
-                  <th className="px-4 py-3 text-left font-semibold">Họ tên</th>
+                  <th className="px-10 py-3 text-left font-semibold">Họ tên</th>
                   <th className="px-4 py-3 text-left font-semibold">Email</th>
                   <th className="px-4 py-3 text-left font-semibold">SĐT</th>
                   <th className="px-4 py-3 text-left font-semibold">Lớp</th>
                   <th className="px-4 py-3 text-left font-semibold">Ngành</th>
                   <th className="px-4 py-3 text-left font-semibold">GPA</th>
-                  <th className="px-4 py-3 text-left font-semibold">
+                  <th className="px-10 py-3 text-left font-semibold">
                     Xếp loại
                   </th>
                   <th className="px-4 py-3 text-center font-semibold">Ảnh</th>
-                  <th className="px-4 py-3 text-center font-semibold">
+                  <th className="px-10 py-3 text-center font-semibold">
                     Trạng thái
                   </th>
                   <th className="px-4 py-3 text-center font-semibold">
@@ -227,15 +224,15 @@ export default function DraftsTableStep({
                       <td className="px-4 py-3 text-center">
                         {draft.isMinted ? (
                           <span className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-xs">
-                            🎯 Đã mint
+                            Đã mint
                           </span>
                         ) : draft.isApproved ? (
                           <span className="px-2 py-1 bg-green-500/20 text-green-300 rounded text-xs">
-                            ✅ Đã duyệt
+                            Đã duyệt
                           </span>
                         ) : (
                           <span className="px-2 py-1 bg-yellow-500/20 text-yellow-300 rounded text-xs">
-                            ⏳ Chờ duyệt
+                            Chờ duyệt
                           </span>
                         )}
                       </td>
@@ -250,7 +247,7 @@ export default function DraftsTableStep({
                             ✏️
                           </button>
                           <button
-                            onClick={() => handleDelete(draft.id)}
+                            onClick={() => setDeletingId(draft.id)}
                             disabled={
                               draft.isMinted ||
                               loading ||
@@ -283,7 +280,6 @@ export default function DraftsTableStep({
               onClick={onRefresh}
               className="px-8 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl text-lg font-semibold transition-colors inline-flex items-center gap-2"
             >
-              <span>🔄</span>
               <span>Tải lại</span>
             </button>
             <button
@@ -291,7 +287,7 @@ export default function DraftsTableStep({
               disabled={drafts.length === 0}
               className="bg-gradient-to-r from-green-500 to-emerald-600 hover:scale-105 px-8 py-3 rounded-xl text-lg font-semibold transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Tiếp theo ➡️
+              Tiếp theo
             </button>
           </div>
         </>
@@ -303,6 +299,15 @@ export default function DraftsTableStep({
           draft={editingDraft}
           onClose={() => setEditingDraft(null)}
           onSave={handleSaveEdit}
+        />
+      )}
+
+      {/* Delete Modal */}
+      {deletingId && (
+        <DeleteDraftModal
+          draftId={deletingId}
+          onClose={() => setDeletingId(null)}
+          onDelete={handleDelete}
         />
       )}
     </div>

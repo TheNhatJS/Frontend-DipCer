@@ -245,36 +245,48 @@ export default function Home() {
 
       {/* Modal */}
       {showModal && diplomaData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
-          <div className="bg-[#1E1E24] text-white rounded-2xl overflow-hidden w-full max-w-7xl shadow-xl flex flex-col sm:flex-row">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md px-4 py-4 overflow-y-auto"
+          onClick={() => {
+            setShowModal(false);
+            setVerificationStatus(null);
+            setVerificationDetails([]);
+          }}
+        >
+          <div 
+            className="bg-[#1E1E24] text-white rounded-2xl overflow-hidden w-full max-w-7xl shadow-xl flex flex-col lg:flex-row my-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Left: Diploma image */}
-            <div className="sm:w-1/2 relative h-64 sm:h-auto">
-              <img
-                src={diplomaData.image}
-                alt="Diploma"
-                className="w-full h-full object-cover rounded-t-2xl sm:rounded-l-2xl sm:rounded-tr-none"
-              />
+            <div className="lg:w-1/2 relative bg-gray-800 flex items-center justify-center p-4">
+              <div className="relative w-full h-full min-h-[300px] lg:min-h-[600px] flex items-center justify-center">
+                <img
+                  src={diplomaData.image}
+                  alt="Diploma"
+                  className="max-w-full max-h-full object-contain rounded-lg"
+                />
 
-              {/* Verification Badge Overlay */}
-              {verificationStatus && (
-                <div className="absolute top-4 right-4 px-4 py-2 rounded-lg font-semibold shadow-lg backdrop-blur-sm">
-                  {verificationStatus === "valid" ? (
-                    <div className="bg-green-500/90 text-white flex items-center gap-2">
-                      <span className="text-xl">✓</span>
-                      <span>Đã xác thực</span>
-                    </div>
-                  ) : (
-                    <div className="bg-red-500/90 text-white flex items-center gap-2">
-                      <span className="text-xl">⚠</span>
-                      <span>Đã bị thay đổi</span>
-                    </div>
-                  )}
-                </div>
-              )}
+                {/* Verification Badge Overlay */}
+                {verificationStatus && (
+                  <div className="absolute top-4 right-4 px-4 py-2 rounded-lg font-semibold shadow-lg backdrop-blur-sm z-10">
+                    {verificationStatus === "valid" ? (
+                      <div className="bg-green-500/90 text-white flex items-center gap-2">
+                        <span className="text-xl">✓</span>
+                        <span>Đã xác thực</span>
+                      </div>
+                    ) : (
+                      <div className="bg-red-500/90 text-white flex items-center gap-2">
+                        <span className="text-xl">⚠</span>
+                        <span>Đã bị thay đổi</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Right: Info */}
-            <div className="sm:w-1/2 p-6 flex flex-col justify-between">
+            <div className="lg:w-1/2 p-6 flex flex-col justify-between max-h-[600px] overflow-y-auto">
               <div className="space-y-2 text-sm sm:text-base">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-2xl font-bold text-blue-400">

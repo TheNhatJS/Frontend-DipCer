@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { toast, Toaster } from "sonner";
 import { HiArrowLeft, HiEye, HiEyeOff, HiKey } from "react-icons/hi";
 import { useRouter } from "next/navigation";
-import axios from "@/lib/axios";
+import axios, { logoutUser } from "@/lib/axios";
 
 export default function ChangePasswordPage() {
   const { data: session } = useSession();
@@ -61,6 +61,7 @@ export default function ChangePasswordPage() {
       });
 
       toast.success("✅ Đổi mật khẩu thành công!");
+      toast.info("🔄 Đang đăng xuất để đăng nhập lại...");
       
       // Reset form
       setFormData({
@@ -69,17 +70,10 @@ export default function ChangePasswordPage() {
         confirmPassword: "",
       });
 
-      // Redirect sau 1.5 giây
-      setTimeout(() => {
-        const role = (session?.user as any)?.role;
-        if (role === 'ISSUER') {
-          router.push("/dashboard/dip-issuer");
-        } else if (role === 'DELEGATE') {
-          router.push("/dashboard/dip-issuer"); // Hoặc delegate dashboard nếu có
-        } else {
-          router.push("/dashboard");
-        }
-      }, 1500);
+      // ✅ Đăng xuất và xóa refresh token khỏi database
+      setTimeout(async () => {
+        await logoutUser("/auth/login?message=password-changed");
+      }, 2000);
 
     } catch (error: any) {
       console.error("Error changing password:", error);

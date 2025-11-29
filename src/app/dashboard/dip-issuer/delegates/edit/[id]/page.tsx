@@ -373,13 +373,9 @@ export default function EditDelegatePage() {
               </label>
               <input
                 type="text"
-                required
+                disabled
                 value={delegate.address}
-                onChange={(e) =>
-                  setDelegate({ ...delegate, address: e.target.value })
-                }
-                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition"
-                placeholder="0x..."
+                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-gray-400 cursor-not-allowed"
               />
               <p className="mt-1 text-xs text-gray-500">
                 Địa chỉ ví blockchain của giảng viên
@@ -429,8 +425,14 @@ export default function EditDelegatePage() {
 
       {/* Cancel Confirmation Modal */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 border border-yellow-500/30 rounded-2xl max-w-md w-full shadow-2xl animate-scale-in">
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowCancelModal(false)}
+        >
+          <div 
+            className="bg-gradient-to-br from-gray-900 to-gray-800 border border-yellow-500/30 rounded-2xl max-w-md w-full shadow-2xl animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6">
               {/* Icon Warning */}
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-500/20 mb-4">

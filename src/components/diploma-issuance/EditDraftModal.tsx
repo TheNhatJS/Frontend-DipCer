@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { DiplomaDraft } from "@/types/diploma-draft";
 
 interface EditDraftModalProps {
@@ -14,6 +15,7 @@ export default function EditDraftModal({
   onClose,
   onSave,
 }: EditDraftModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [formData, setFormData] = useState({
     studentId: draft.studentId,
     serialNumber: draft.serialNumber,
@@ -28,6 +30,11 @@ export default function EditDraftModal({
     GPA: draft.GPA,
   });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const calculateClassification = (gpa: number) => {
     if (gpa >= 3.6) return "EXCELLENT";
@@ -70,9 +77,17 @@ export default function EditDraftModal({
     }));
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-white/10">
+  if (!mounted) return null;
+
+  const modalContent = (
+    <div 
+      className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[70] p-4"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-slate-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="sticky top-0 bg-slate-800 border-b border-white/10 px-6 py-4 flex justify-between items-center">
           <h2 className="text-2xl font-bold text-blue-400">
@@ -286,4 +301,6 @@ export default function EditDraftModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

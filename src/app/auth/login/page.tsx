@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { FiEye, FiEyeOff } from 'react-icons/fi'
@@ -12,11 +12,20 @@ import { toast, Toaster } from 'sonner'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  // ✅ Hiển thị thông báo nếu đổi mật khẩu thành công
+  useEffect(() => {
+    const message = searchParams.get('message')
+    if (message === 'password-changed') {
+      toast.success('✅ Đổi mật khẩu thành công! Vui lòng đăng nhập lại.')
+    }
+  }, [searchParams])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

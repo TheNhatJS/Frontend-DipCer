@@ -678,8 +678,14 @@ export default function DiplomasPage() {
         )}
 
         {showDetailModal && selectedDip && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-gray-900 border border-white/10 rounded-lg max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl">
+          <div 
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowDetailModal(false)}
+          >
+            <div 
+              className="bg-gray-900 border border-white/10 rounded-lg max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
               {/* Header - Fixed */}
               <div className="p-6 border-b border-white/10">
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -922,8 +928,14 @@ export default function DiplomasPage() {
 
         {/* Batch Revoke Modal */}
         {showBatchRevokeModal && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-gray-900 border border-red-500/30 rounded-lg max-w-md w-full p-6 shadow-2xl">
+          <div 
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowBatchRevokeModal(false)}
+          >
+            <div 
+              className="bg-gray-900 border border-red-500/30 rounded-lg max-w-md w-full p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 className="text-xl font-bold mb-4 text-red-400">
                 ⚠️ Xác nhận thu hồi hàng loạt
               </h2>
@@ -976,8 +988,14 @@ export default function DiplomasPage() {
         )}
 
         {showDeleteModal && selectedDip && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-gray-900 border border-red-500/30 rounded-lg max-w-md w-full p-6 shadow-2xl">
+          <div 
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowDeleteModal(false)}
+          >
+            <div 
+              className="bg-gray-900 border border-red-500/30 rounded-lg max-w-md w-full p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
               <h2 className="text-xl font-bold mb-4 text-red-400">
                 ⚠️ Xác nhận thu hồi
               </h2>
